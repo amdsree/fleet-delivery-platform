@@ -27,7 +27,8 @@ export default function ReportsPage() {
   }, []);
 
   const downloadCsv = (type: 'drivers' | 'vehicles') => {
-    const url = `http://localhost:4000/api/v1/reports/${type}?format=csv`;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+    const url = `${apiBase}/reports/${type}?format=csv`;
     window.open(url, '_blank');
   };
 

@@ -6,7 +6,7 @@ import { Download, ShieldCheck, Smartphone, CheckCircle, AlertTriangle, QrCode }
 export default function DriverAppDownloadPage() {
   const downloadUrl = process.env.NEXT_PUBLIC_API_URL 
     ? `${process.env.NEXT_PUBLIC_API_URL}/distribution/download-apk`
-    : 'http://localhost:3000/api/v1/distribution/download-apk';
+    : '/downloads/fleet-driver.apk';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12">
