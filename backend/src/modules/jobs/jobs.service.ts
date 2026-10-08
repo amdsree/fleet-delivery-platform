@@ -183,6 +183,16 @@ export class JobsService {
         newValues: { job_number: jobNumber, order_id: order.id, stops_count: stops.length },
       });
 
+      if (this.notifService) {
+        await this.notifService.dispatchStakeholderEvent({
+          event: 'JOB_CREATED',
+          jobId: savedJob.id,
+          jobNumber: savedJob.job_number,
+          createdBy: actor.name,
+          details: { createdBy: actor.name, role: actor.role?.name, orderId: order.id },
+        });
+      }
+
       return this.findOne(savedJob.id);
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -299,6 +309,7 @@ export class JobsService {
       job.assigned_by = actor.id;
       job.offered_at = now;
       job.offer_expires_at = expiresAt;
+      job.rejection_reason = null;
       await queryRunner.manager.save(job);
 
       driver.duty_status = DriverDutyStatus.JOB_OFFERED;
@@ -422,6 +433,19 @@ export class JobsService {
         newValues: { vehicle_id: vehicle.id, accepted_at: job.accepted_at },
       });
 
+      if (this.notifService) {
+        await this.notifService.dispatchStakeholderEvent({
+          event: 'JOB_ACCEPTED',
+          jobId: job.id,
+          jobNumber: job.job_number,
+          driverId: driver.id,
+          driverUserId: driverUser.id,
+          driverName: driverUser.name,
+          vehicleInfo: `${vehicle.registration_number} (${vehicle.model || vehicle.vehicle_type})`,
+          details: { vehicle_id: vehicle.id, accepted_at: job.accepted_at },
+        });
+      }
+
       return this.findOne(job.id);
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -480,7 +504,21 @@ export class JobsService {
         newValues: { reason: dto.reason, remarks: dto.remarks },
       });
 
-      return { success: true, message: 'Job rejected', job_id: job.id };
+      if (this.notifService) {
+        await this.notifService.dispatchStakeholderEvent({
+          event: 'JOB_REJECTED',
+          jobId: job.id,
+          jobNumber: job.job_number,
+          driverId: driver.id,
+          driverUserId: driverUser.id,
+          driverName: driverUser.name,
+          rejectionReason: dto.reason,
+          remarks: dto.remarks,
+          details: { reason: dto.reason, remarks: dto.remarks },
+        });
+      }
+
+      return { success: true, message: 'Job rejected', job_id: job.id, remarks: dto.remarks };
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;

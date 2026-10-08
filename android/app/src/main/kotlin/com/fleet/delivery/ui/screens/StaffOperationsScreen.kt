@@ -3,6 +3,7 @@ package com.fleet.delivery.ui.screens
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,18 +22,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import com.fleet.delivery.util.FleetNotificationManager
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class UiJobItem(
     val id: String,
     val jobNumber: String,
-    val status: String,
+    val status: String, // "AWAITING_ASSIGNMENT", "OFFERED", "ACCEPTED", "IN PROGRESS", "REJECTED", "COMPLETED"
     val pickupName: String,
     val deliveryName: String,
     val cargoDetails: String,
     val assignedDriver: String,
     val priority: String,
-    val timeAgo: String
+    val timeAgo: String,
+    val rejectionReason: String? = null,
+    val pickupLat: Double = 13.0285,
+    val pickupLng: Double = 77.5195
 )
 
 data class UiVehicleItem(
@@ -63,6 +69,34 @@ data class UiGodownLocation(
     val radiusMeters: Int
 )
 
+data class UiDriverRadarItem(
+    val id: String,
+    val name: String,
+    val phone: String,
+    val dutyStatus: String, // "AVAILABLE", "BUSY", "OFF_DUTY"
+    val isBusy: Boolean,
+    val activeOrder: String? = null,
+    val distanceKm: Double,
+    val vehicleName: String,
+    val vehicleReg: String,
+    val keepAliveStatus: String, // "ACTIVE", "IDLE", "OFFLINE"
+    val lastPingSecondsAgo: Int,
+    val latitude: Double,
+    val longitude: Double,
+    val speedKmh: Int
+)
+
+data class UiDriverDailyMetric(
+    val driverId: String,
+    val driverName: String,
+    val phone: String,
+    val dailyRanKm: Double,
+    val vehiclesUsed: String,
+    val dwellTimeMins: Int,
+    val visitedLocations: List<String>,
+    val keepAliveStatus: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffOperationsScreen(
@@ -83,6 +117,14 @@ fun StaffOperationsScreen(
     var showGodownsModal by remember { mutableStateOf(false) }
     var showAddGodownModal by remember { mutableStateOf(false) }
 
+    // Operational Radar & Management Modals
+    var jobToAllocateDriver by remember { mutableStateOf<UiJobItem?>(null) }
+    var showLiveFleetModal by remember { mutableStateOf(false) }
+    var showDailyMetricsModal by remember { mutableStateOf(false) }
+    var jobToRejectWithRemark by remember { mutableStateOf<UiJobItem?>(null) }
+    var customRejectRemark by remember { mutableStateOf("Vehicle capacity constraint: payload exceeds capacity") }
+    var lastGpsRefreshTimestamp by remember { mutableStateOf("Live GPS Synced Just Now") }
+
     // State for delete confirmations
     var itemToDeleteType by remember { mutableStateOf<String?>(null) }
     var itemToDeleteId by remember { mutableStateOf<String?>(null) }
@@ -98,8 +140,6 @@ fun StaffOperationsScreen(
     var quantityText by remember { mutableStateOf("40") }
     var weightText by remember { mutableStateOf("250") }
     var priorityText by remember { mutableStateOf("High Priority") }
-    var assignMode by remember { mutableStateOf("AUTO") }
-    var selectedDriver by remember { mutableStateOf("Driver 1 (Kiran Kumar)") }
 
     // Add Vehicle Form State
     var newVehicleReg by remember { mutableStateOf("") }
@@ -123,7 +163,6 @@ fun StaffOperationsScreen(
     var newGodownRadius by remember { mutableStateOf("150") }
 
     var successMessage by remember { mutableStateOf<String?>(null) }
-    val coroutineScope = rememberCoroutineScope()
 
     // Dynamic Lists
     var vehiclesList by remember {
@@ -161,15 +200,169 @@ fun StaffOperationsScreen(
         )
     }
 
-    var jobsList by remember {
+    var driversRadarList by remember {
         mutableStateOf(
             listOf(
-                UiJobItem("1", "JOB #10045", "IN PROGRESS", "Peenya Central Godown", "Metro Hypermarket Malleshwaram", "50 Cartons Packaged Foods (350 kg)", "Kiran Kumar (KA-04-AB-1234)", "High", "12 mins ago"),
-                UiJobItem("2", "JOB #10044", "OFFERED", "Whitefield Depot", "Indiranagar Retail Outlet", "20 Barrels Lubricant (200 kg)", "Ramesh Babu (KA-05-CD-5678)", "Normal", "25 mins ago"),
-                UiJobItem("3", "JOB #10043", "COMPLETED", "Electronic City Warehouse", "Koramangala Logistics Bay", "15 Crates Electronics (120 kg)", "Sunil V (KA-51-EF-9012)", "Critical", "1 hour ago")
+                UiDriverRadarItem(
+                    id = "d1",
+                    name = "Kiran Kumar (Lead Driver 1)",
+                    phone = "+91 98450 11001",
+                    dutyStatus = "AVAILABLE",
+                    isBusy = false,
+                    distanceKm = 1.2,
+                    vehicleName = "Tata Ace Gold (Mini Truck)",
+                    vehicleReg = "KA-04-AB-1234",
+                    keepAliveStatus = "ACTIVE",
+                    lastPingSecondsAgo = 4,
+                    latitude = 13.0285,
+                    longitude = 77.5195,
+                    speedKmh = 0
+                ),
+                UiDriverRadarItem(
+                    id = "d2",
+                    name = "Ramesh Babu (Driver 2)",
+                    phone = "+91 98450 11002",
+                    dutyStatus = "BUSY",
+                    isBusy = true,
+                    activeOrder = "Order #10045 (In Transit)",
+                    distanceKm = 3.8,
+                    vehicleName = "Eicher Pro 1049 (Medium Truck)",
+                    vehicleReg = "KA-05-CD-5678",
+                    keepAliveStatus = "ACTIVE",
+                    lastPingSecondsAgo = 12,
+                    latitude = 12.9698,
+                    longitude = 77.7500,
+                    speedKmh = 28
+                ),
+                UiDriverRadarItem(
+                    id = "d3",
+                    name = "Sunil V (Driver 3)",
+                    phone = "+91 98450 11003",
+                    dutyStatus = "AVAILABLE",
+                    isBusy = false,
+                    distanceKm = 4.6,
+                    vehicleName = "Mahindra Bolero Maxi",
+                    vehicleReg = "KA-51-EF-9012",
+                    keepAliveStatus = "ACTIVE",
+                    lastPingSecondsAgo = 25,
+                    latitude = 12.8452,
+                    longitude = 77.6602,
+                    speedKmh = 0
+                ),
+                UiDriverRadarItem(
+                    id = "d4",
+                    name = "Anand Rao (Driver 4)",
+                    phone = "+91 98450 11004",
+                    dutyStatus = "OFF_DUTY",
+                    isBusy = false,
+                    distanceKm = 8.2,
+                    vehicleName = "Piaggio Ape Electric",
+                    vehicleReg = "KA-03-GH-3456",
+                    keepAliveStatus = "OFFLINE",
+                    lastPingSecondsAgo = 3600,
+                    latitude = 13.0300,
+                    longitude = 77.5500,
+                    speedKmh = 0
+                )
             )
         )
     }
+
+    var jobsList by remember {
+        mutableStateOf(
+            listOf(
+                UiJobItem(
+                    id = "0",
+                    jobNumber = "JOB #10046",
+                    status = "AWAITING_ASSIGNMENT",
+                    pickupName = "Peenya Central Godown",
+                    deliveryName = "Metro Hypermarket Malleshwaram",
+                    cargoDetails = "40 Cases FMCG Goods (250 kg)",
+                    assignedDriver = "Unassigned",
+                    priority = "High",
+                    timeAgo = "Just now",
+                    rejectionReason = null,
+                    pickupLat = 13.0285,
+                    pickupLng = 77.5195
+                ),
+                UiJobItem(
+                    id = "1",
+                    jobNumber = "JOB #10045",
+                    status = "IN PROGRESS",
+                    pickupName = "Peenya Central Godown",
+                    deliveryName = "Metro Hypermarket Malleshwaram",
+                    cargoDetails = "50 Cartons Packaged Foods (350 kg)",
+                    assignedDriver = "Kiran Kumar (KA-04-AB-1234)",
+                    priority = "High",
+                    timeAgo = "12 mins ago",
+                    rejectionReason = null,
+                    pickupLat = 13.0285,
+                    pickupLng = 77.5195
+                ),
+                UiJobItem(
+                    id = "2",
+                    jobNumber = "JOB #10044",
+                    status = "REJECTED",
+                    pickupName = "Whitefield Depot",
+                    deliveryName = "Indiranagar Retail Outlet",
+                    cargoDetails = "20 Barrels Lubricant (200 kg)",
+                    assignedDriver = "Ramesh Babu",
+                    priority = "Normal",
+                    timeAgo = "25 mins ago",
+                    rejectionReason = "Vehicle capacity: flat tire - unable to take cargo load",
+                    pickupLat = 12.9698,
+                    pickupLng = 77.7500
+                ),
+                UiJobItem(
+                    id = "3",
+                    jobNumber = "JOB #10043",
+                    status = "COMPLETED",
+                    pickupName = "Electronic City Warehouse",
+                    deliveryName = "Koramangala Logistics Bay",
+                    cargoDetails = "15 Crates Electronics (120 kg)",
+                    assignedDriver = "Sunil V (KA-51-EF-9012)",
+                    priority = "Critical",
+                    timeAgo = "1 hour ago",
+                    rejectionReason = null,
+                    pickupLat = 12.8452,
+                    pickupLng = 77.6602
+                )
+            )
+        )
+    }
+
+    val dailyMetrics = listOf(
+        UiDriverDailyMetric(
+            driverId = "d1",
+            driverName = "Kiran Kumar (Lead Driver 1)",
+            phone = "+91 98450 11001",
+            dailyRanKm = 48.5,
+            vehiclesUsed = "KA-04-AB-1234 (Tata Ace Gold)",
+            dwellTimeMins = 57,
+            visitedLocations = listOf("Peenya Central Godown (32m)", "Metro Hypermarket Malleshwaram (25m)"),
+            keepAliveStatus = "ACTIVE"
+        ),
+        UiDriverDailyMetric(
+            driverId = "d2",
+            driverName = "Ramesh Babu (Driver 2)",
+            phone = "+91 98450 11002",
+            dailyRanKm = 62.0,
+            vehiclesUsed = "KA-05-CD-5678 (Eicher Pro 1049)",
+            dwellTimeMins = 78,
+            visitedLocations = listOf("Whitefield Depot (40m)", "Indiranagar Retail Outlet (38m)"),
+            keepAliveStatus = "ACTIVE"
+        ),
+        UiDriverDailyMetric(
+            driverId = "d3",
+            driverName = "Sunil V (Driver 3)",
+            phone = "+91 98450 11003",
+            dailyRanKm = 35.2,
+            vehiclesUsed = "KA-51-EF-9012 (Mahindra Bolero Maxi)",
+            dwellTimeMins = 45,
+            visitedLocations = listOf("Electronic City Warehouse (25m)", "Koramangala Logistics Bay (20m)"),
+            keepAliveStatus = "ACTIVE"
+        )
+    )
 
     val roleLabel = when (userRole) {
         "ADMIN" -> "SUPER ADMINISTRATOR"
@@ -264,8 +457,443 @@ fun StaffOperationsScreen(
         )
     }
 
+    // =========================================================================
+    // MODAL: GODOWN MANAGER DRIVER ALLOCATION & LIVE RADAR (CLOSEST & BUSY DISTANCE)
+    // =========================================================================
+    if (jobToAllocateDriver != null) {
+        val job = jobToAllocateDriver!!
+        AlertDialog(
+            onDismissRequest = { jobToAllocateDriver = null },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Allocate Driver: ${job.jobNumber}", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Pickup: ${job.pickupName}", color = Color(0xFF10B981), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    IconButton(onClick = { jobToAllocateDriver = null }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color(0xFF94A3B8))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 440.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Location & Refresh bar
+                    Surface(
+                        color = Color(0xFF0F172A),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("📍 Lat: ${job.pickupLat}, Lng: ${job.pickupLng}", color = Color(0xFF94A3B8), fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                                Text(lastGpsRefreshTimestamp, color = Color(0xFF38BDF8), fontSize = 10.sp)
+                            }
+                            Button(
+                                onClick = {
+                                    val nowTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+                                    lastGpsRefreshTimestamp = "Refreshed at $nowTime (GPS Synced)"
+                                    // Simulated location refresh with distance perturbation
+                                    driversRadarList = driversRadarList.map { d ->
+                                        if (d.id == "d1") d.copy(distanceKm = 1.1, lastPingSecondsAgo = 1)
+                                        else if (d.id == "d2") d.copy(distanceKm = 3.7, lastPingSecondsAgo = 3)
+                                        else d
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Refresh GPS", fontSize = 10.sp)
+                            }
+                        }
+                    }
+
+                    Text("Active Fleet Drivers in Operational Radius:", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                    // Driver Cards
+                    driversRadarList.forEach { drv ->
+                        val isClosest = drv.id == "d1"
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isClosest) Color(0xFF064E3B) else if (drv.isBusy) Color(0xFF2E1065) else Color(0xFF1E293B)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(
+                                    width = if (isClosest) 1.5.dp else 1.dp,
+                                    color = if (isClosest) Color(0xFF10B981) else if (drv.isBusy) Color(0xFF9333EA) else Color(0xFF334155),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(drv.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("${drv.vehicleName} • ${drv.vehicleReg}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    }
+
+                                    if (isClosest) {
+                                        Surface(
+                                            color = Color(0xFF10B981),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text("⭐ CLOSEST", color = Color(0xFF064E3B), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (drv.isBusy) {
+                                        // SHOW AS BUSY AND SHOW DISTANCE FROM ASSIGNED LOCATION
+                                        Column {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Surface(color = Color(0xFFDC2626).copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp)) {
+                                                    Text("🟡 BUSY: ${drv.activeOrder ?: "On Order"}", color = Color(0xFFFCA5A5), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                                }
+                                            }
+                                            Text(
+                                                "📍 Distance from Pickup: ${drv.distanceKm} km",
+                                                color = Color(0xFFFBBF24),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    } else {
+                                        Column {
+                                            Text("🟢 ${drv.dutyStatus}", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text("📍 Distance from Pickup: ${drv.distanceKm} km", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+
+                                    // ASSIGN BUTTON
+                                    Button(
+                                        onClick = {
+                                            // Assign driver to job
+                                            jobsList = jobsList.map { j ->
+                                                if (j.id == job.id) {
+                                                    j.copy(
+                                                        status = "OFFERED",
+                                                        assignedDriver = "${drv.name} (${drv.vehicleReg})",
+                                                        rejectionReason = null,
+                                                        timeAgo = "Offered just now"
+                                                    )
+                                                } else j
+                                            }
+                                            FleetNotificationManager.showOperationalAlert(
+                                                context,
+                                                "JOB_ASSIGNED",
+                                                "Job Offered: ${job.jobNumber}",
+                                                "Task offered to ${drv.name} (${drv.vehicleReg}). Awaiting acceptance."
+                                            )
+                                            successMessage = "Assigned to ${drv.name}! Push notification sent to driver's phone."
+                                            jobToAllocateDriver = null
+                                        },
+                                        enabled = !drv.isBusy && drv.dutyStatus == "AVAILABLE",
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isClosest) Color(0xFF10B981) else Color(0xFF0284C7),
+                                            disabledContainerColor = Color(0xFF334155)
+                                        ),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            if (isClosest) "⚡ Assign Closest" else if (drv.isBusy) "Busy" else "Assign",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { jobToAllocateDriver = null }) {
+                    Text("Close", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
+
+    // =========================================================================
+    // MODAL: SIMULATE DRIVER REJECT WITH AUDIT REMARK (FOR TESTING PAIRING FLOW)
+    // =========================================================================
+    if (jobToRejectWithRemark != null) {
+        val job = jobToRejectWithRemark!!
+        AlertDialog(
+            onDismissRequest = { jobToRejectWithRemark = null },
+            title = {
+                Text("Simulate Driver Reject: ${job.jobNumber}", fontWeight = FontWeight.Bold, color = Color(0xFFEF4444), fontSize = 15.sp)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter driver rejection remark (e.g. flat tire, vehicle overloaded):", fontSize = 11.sp, color = Color(0xFF94A3B8))
+                    OutlinedTextField(
+                        value = customRejectRemark,
+                        onValueChange = { customRejectRemark = it },
+                        label = { Text("Driver Rejection Remark") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val remark = if (customRejectRemark.isNotBlank()) customRejectRemark.trim() else "Vehicle issue"
+                        jobsList = jobsList.map { j ->
+                            if (j.id == job.id) {
+                                j.copy(
+                                    status = "REJECTED",
+                                    rejectionReason = remark,
+                                    timeAgo = "Rejected just now"
+                                )
+                            } else j
+                        }
+                        FleetNotificationManager.showOperationalAlert(
+                            context,
+                            "JOB_REJECTED",
+                            "⚠️ Job Rejected: ${job.jobNumber}",
+                            "Driver rejected task with remark: '$remark'. Re-assignment required."
+                        )
+                        successMessage = "Job marked as Rejected with remark. Godown Manager alerted to reassign."
+                        jobToRejectWithRemark = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                ) {
+                    Text("Confirm Rejection")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { jobToRejectWithRemark = null }) {
+                    Text("Cancel", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
+
+    // =========================================================================
+    // MODAL: LIVE KEEP-ALIVE FLEET RADAR (VISIBLE TO ADMIN & SALES STAFF)
+    // =========================================================================
+    if (showLiveFleetModal) {
+        AlertDialog(
+            onDismissRequest = { showLiveFleetModal = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Radio, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Live Keep-Alive & Geo Fleet Tracking", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                    IconButton(onClick = { showLiveFleetModal = false }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color(0xFF94A3B8))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Real-Time Driver Foreground Heartbeat & GPS Coordinates:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+
+                    driversRadarList.forEach { drv ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(drv.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Surface(
+                                        color = if (drv.keepAliveStatus == "ACTIVE") Color(0xFF064E3B) else Color(0xFF1E293B),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            "🟢 ${drv.keepAliveStatus} (${drv.lastPingSecondsAgo}s ago)",
+                                            color = if (drv.keepAliveStatus == "ACTIVE") Color(0xFF6EE7B7) else Color(0xFF94A3B8),
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                Text("Vehicle: ${drv.vehicleReg} (${drv.vehicleName})", color = Color(0xFF38BDF8), fontSize = 11.sp)
+                                Text("📍 Lat: ${drv.latitude}, Lng: ${drv.longitude} • Speed: ${drv.speedKmh} km/h", color = Color(0xFF10B981), fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(
+                                        onClick = {
+                                            val uri = Uri.parse("https://www.google.com/maps?q=${drv.latitude},${drv.longitude}")
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(13.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Open in Google Maps", color = Color(0xFF38BDF8), fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLiveFleetModal = false }) {
+                    Text("Close", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
+
+    // =========================================================================
+    // MODAL: ADMIN DAILY DRIVER RUN, VEHICLES USED & DISPATCH DWELL TIMES
+    // =========================================================================
+    if (showDailyMetricsModal) {
+        AlertDialog(
+            onDismissRequest = { showDailyMetricsModal = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Drivers Daily Performance", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Daily Ran KM, Vehicles & Dispatch Dwell Time", color = Color(0xFF10B981), fontSize = 10.sp)
+                    }
+                    IconButton(onClick = { showDailyMetricsModal = false }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color(0xFF94A3B8))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 440.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    dailyMetrics.forEach { m ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(m.driverName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Surface(color = Color(0xFF064E3B), shape = RoundedCornerShape(4.dp)) {
+                                        Text("🟢 ${m.keepAliveStatus}", color = Color(0xFF6EE7B7), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Daily Ran Distance:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("${m.dailyRanKm} km", color = Color(0xFF10B981), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Vehicles Used:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text(m.vehiclesUsed, color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Dispatch Dwell Time:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("${m.dwellTimeMins} mins total", color = Color(0xFFFBBF24), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Text("Dispatch Locations Visited:", color = Color(0xFF64748B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                m.visitedLocations.forEach { loc ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Place, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(loc, color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDailyMetricsModal = false }) {
+                    Text("Close", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
+
     // ==========================================
-    // MODAL: MANAGE FLEET VEHICLES
+    // MODAL: MANAGE VEHICLES (Add & Delete)
     // ==========================================
     if (showVehiclesModal) {
         AlertDialog(
@@ -276,10 +904,10 @@ fun StaffOperationsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Fleet Vehicles (${vehiclesList.size})", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Vehicles Fleet (${vehiclesList.size})", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Button(
                         onClick = { showAddVehicleModal = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8)),
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         shape = RoundedCornerShape(8.dp)
                     ) {
@@ -293,7 +921,7 @@ fun StaffOperationsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 400.dp)
+                        .heightIn(max = 380.dp)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -312,8 +940,8 @@ fun StaffOperationsScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(v.regNumber, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Text("${v.model} • ${v.capacityKg}", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                    Text("Status: ${v.status}", color = if (v.status == "AVAILABLE") Color(0xFF10B981) else Color(0xFFF59E0B), fontSize = 10.sp)
+                                    Text("${v.model} • ${v.type}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                    Text("Capacity: ${v.capacityKg} • Status: ${v.status}", color = Color(0xFF10B981), fontSize = 10.sp)
                                 }
                                 IconButton(
                                     onClick = {
@@ -350,14 +978,14 @@ fun StaffOperationsScreen(
                     OutlinedTextField(
                         value = newVehicleReg,
                         onValueChange = { newVehicleReg = it },
-                        label = { Text("Plate / Reg Number (e.g. KA-02-XY-9999)") },
+                        label = { Text("Registration Number (e.g. KA-04-XX-9999)") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = newVehicleModel,
                         onValueChange = { newVehicleModel = it },
-                        label = { Text("Model Name (e.g. Tata Ace Gold)") },
+                        label = { Text("Vehicle Model (e.g. Tata Ace)") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -383,7 +1011,7 @@ fun StaffOperationsScreen(
                                 status = "AVAILABLE"
                             )
                             vehiclesList = listOf(newV) + vehiclesList
-                            successMessage = "Vehicle ${newV.regNumber} registered successfully."
+                            successMessage = "Vehicle ${newV.regNumber} added successfully."
                             newVehicleReg = ""
                             showAddVehicleModal = false
                         }
@@ -405,36 +1033,42 @@ fun StaffOperationsScreen(
     }
 
     // ==========================================
-    // MODAL: MANAGE STAFF (GODOWN MGRS & SALES)
+    // MODAL: MANAGE OPERATIONS STAFF (GM & Sales)
     // ==========================================
     if (showStaffModal) {
+        val filteredStaff = staffList.filter { it.role == staffModalTab }
         AlertDialog(
             onDismissRequest = { showStaffModal = false },
             title = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Staff Management", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Button(
+                        onClick = {
+                            newStaffRole = staffModalTab
+                            showAddStaffModal = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA78BFA)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("Staff Management", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Button(
-                            onClick = {
-                                newStaffRole = staffModalTab
-                                showAddStaffModal = true
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (staffModalTab == "GODOWN_MANAGER") Color(0xFFF59E0B) else Color(0xFF38BDF8)
-                            ),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(if (staffModalTab == "GODOWN_MANAGER") "+ Add GM" else "+ Add Sales", fontSize = 12.sp)
-                        }
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("+ Add Staff", fontSize = 12.sp)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Staff Role Tabs
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Button(
                             onClick = { staffModalTab = "GODOWN_MANAGER" },
@@ -444,7 +1078,7 @@ fun StaffOperationsScreen(
                             shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Godown Mgrs", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Godown Mgrs", fontSize = 11.sp)
                         }
                         Button(
                             onClick = { staffModalTab = "SALES_STAFF" },
@@ -454,23 +1088,18 @@ fun StaffOperationsScreen(
                             shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Sales Staff", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Sales Staff", fontSize = 11.sp)
                         }
                     }
-                }
-            },
-            text = {
-                val filteredStaff = staffList.filter { it.role == staffModalTab }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 350.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (filteredStaff.isEmpty()) {
-                        Text("No staff registered in this category.", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                    } else {
+
+                    // Staff List
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         filteredStaff.forEach { s ->
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
@@ -487,7 +1116,7 @@ fun StaffOperationsScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(s.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         Text(s.email, color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                        Text("${s.phone} • ${s.assignedUnit}", color = Color(0xFF64748B), fontSize = 10.sp)
+                                        Text("📞 ${s.phone} • 📍 ${s.assignedUnit}", color = Color(0xFFCBD5E1), fontSize = 10.sp)
                                     }
                                     IconButton(
                                         onClick = {
@@ -667,15 +1296,8 @@ fun StaffOperationsScreen(
                                 ) {
                                     TextButton(
                                         onClick = {
-                                            val mapUri = Uri.parse("geo:${g.latitude},${g.longitude}?q=${g.latitude},${g.longitude}(${Uri.encode(g.name)})")
-                                            val mapIntent = Intent(Intent.ACTION_VIEW, mapUri)
-                                            try {
-                                                context.startActivity(mapIntent)
-                                            } catch (e: Exception) {
-                                                // Fallback browser intent
-                                                val webUri = Uri.parse("https://www.google.com/maps?q=${g.latitude},${g.longitude}")
-                                                context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
-                                            }
+                                            val webUri = Uri.parse("https://www.google.com/maps?q=${g.latitude},${g.longitude}")
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
                                         },
                                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
@@ -806,7 +1428,6 @@ fun StaffOperationsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Verify on Google Maps button
                     Button(
                         onClick = {
                             val webUri = Uri.parse("https://www.google.com/maps?q=$newGodownLat,$newGodownLng")
@@ -859,7 +1480,7 @@ fun StaffOperationsScreen(
     }
 
     // ==========================================
-    // MODAL: ADD DELIVERY JOB
+    // MODAL: ADD DELIVERY JOB (Admin & Sales Staff)
     // ==========================================
     if (showAddJobModal) {
         AlertDialog(
@@ -939,28 +1560,19 @@ fun StaffOperationsScreen(
                         )
                     }
 
-                    // Dispatch Strategy
-                    Text("Driver Allocation Mode", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = { assignMode = "AUTO" },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (assignMode == "AUTO") Color(0xFF10B981) else Color(0xFF0F172A)
-                            ),
-                            shape = RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Auto Dispatch", fontSize = 11.sp)
-                        }
-                        Button(
-                            onClick = { assignMode = "MANUAL" },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (assignMode == "MANUAL") Color(0xFF10B981) else Color(0xFF0F172A)
-                            ),
-                            shape = RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Manual Select", fontSize = 11.sp)
+                    Surface(
+                        color = Color(0xFF0F2B48),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "Job will trigger immediate notification on logged-in Godown Manager's phone for driver allocation.",
+                                color = Color(0xFF93C5FD),
+                                fontSize = 10.sp
+                            )
                         }
                     }
                 }
@@ -971,16 +1583,25 @@ fun StaffOperationsScreen(
                         val newJob = UiJobItem(
                             id = "job_${System.currentTimeMillis()}",
                             jobNumber = "JOB #${(10050..10099).random()}",
-                            status = "OFFERED",
+                            status = "AWAITING_ASSIGNMENT",
                             pickupName = selectedPickup,
                             deliveryName = selectedDelivery,
                             cargoDetails = "$cargoDescription ($weightText kg)",
-                            assignedDriver = if (assignMode == "AUTO") "Auto-Ranked Nearest Driver" else selectedDriver,
+                            assignedDriver = "Unassigned",
                             priority = priorityText,
-                            timeAgo = "Just now"
+                            timeAgo = "Just now",
+                            rejectionReason = null,
+                            pickupLat = 13.0285,
+                            pickupLng = 77.5195
                         )
                         jobsList = listOf(newJob) + jobsList
-                        successMessage = "Success! ${newJob.jobNumber} created & dispatched with push notification."
+                        FleetNotificationManager.showOperationalAlert(
+                            context,
+                            "JOB_CREATED",
+                            "New Delivery Job: ${newJob.jobNumber}",
+                            "Created by $roleLabel. Notification dispatched to Godown Manager for driver allocation."
+                        )
+                        successMessage = "Job ${newJob.jobNumber} created! Logged-in Godown Manager notified to select driver."
                         showAddJobModal = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
@@ -989,7 +1610,7 @@ fun StaffOperationsScreen(
                 ) {
                     Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Create & Dispatch Job", fontWeight = FontWeight.Bold)
+                    Text("Create Job & Notify Godown Manager", fontWeight = FontWeight.Bold)
                 }
             },
             containerColor = Color(0xFF1E293B),
@@ -999,7 +1620,7 @@ fun StaffOperationsScreen(
     }
 
     // ==========================================
-    // MAIN SCREEN LAYOUT
+    // MAIN SCREEN CONTENT
     // ==========================================
     Column(
         modifier = Modifier
@@ -1007,239 +1628,305 @@ fun StaffOperationsScreen(
             .background(Color(0xFF0F172A))
             .padding(16.dp)
     ) {
-        // TOP HEADER BAR (Clean branding without provider labels)
+        // TOP ENTERPRISE HEADER
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFF10B981),
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.size(10.dp)
+                    ) {}
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "FLEETOPS ENTERPRISE",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                }
                 Text(
-                    text = "Welcome, $userName",
+                    text = userName,
                     color = Color.White,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold
                 )
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
-                    Surface(
-                        color = roleColor.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(4.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, roleColor.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = roleLabel,
-                            color = roleColor,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
             }
 
-            // Logout Button
             IconButton(
                 onClick = { showLogoutDialog = true },
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(Color(0xFF1E293B), shape = RoundedCornerShape(10.dp))
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = Color(0xFF1E293B)
+                )
             ) {
                 Icon(
                     imageVector = Icons.Default.ExitToApp,
                     contentDescription = "Log Out",
-                    tint = Color(0xFFEF4444),
-                    modifier = Modifier.size(20.dp)
+                    tint = Color(0xFFF87171)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // Success Alert Banner
-        if (successMessage != null) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF065F46)),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = successMessage!!, color = Color(0xFFD1FAE5), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        // PRIMARY ACTION CARD: + ADD DELIVERY JOB
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF10B981)),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showAddJobModal = true }
+        // Role Badge with Actions
+        Surface(
+            color = roleColor.copy(alpha = 0.15f),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .background(Color.White.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AddCircle,
-                            contentDescription = "Add Job",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "+ ADD DELIVERY JOB",
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 0.5.sp
-                        )
-                        Text(
-                            text = "Dispatch consignment to driver & warehouse",
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 11.sp
-                        )
-                    }
+                Column {
+                    Text(
+                        text = roleLabel,
+                        color = roleColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = userEmail,
+                        color = Color(0xFF94A3B8),
+                        fontSize = 10.sp
+                    )
                 }
-                Icon(
-                    imageVector = Icons.Default.ArrowForward,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
+
+                // Header Action: Keep Alive Tracking
+                Button(
+                    onClick = { showLiveFleetModal = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Radio, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Keep-Alive Radar", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // ROLE SPECIFIC OPERATIONAL WIDGETS
-        when (userRole) {
-            "GODOWN_MANAGER" -> {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+        // Success banner
+        if (successMessage != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                color = Color(0xFF065F46),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Godown Loading Bay Desk", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "2 drivers queued for pickup • Dock 1 & Dock 3 active • Geofence arrivals automatically notified",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp
-                        )
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(successMessage!!, color = Color.White, fontSize = 11.sp, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { successMessage = null }, modifier = Modifier.size(16.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
                     }
                 }
-                Spacer(modifier = Modifier.height(14.dp))
             }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // PRIMARY ACTION BUTTON: CREATE DELIVERY JOB
+        Button(
+            onClick = { showAddJobModal = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF10B981)
+            ),
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AddCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("+ Create Delivery Job", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // ==========================================
+        // ROLE SPECIFIC OPERATIONAL WIDGETS
+        // ==========================================
+        when (userRole) {
+            "GODOWN_MANAGER" -> {
+                val pendingJobsCount = jobsList.count { it.status == "AWAITING_ASSIGNMENT" || it.status == "REJECTED" }
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (pendingJobsCount > 0) Color(0xFF451A03) else Color(0xFF1E293B)
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().border(
+                        1.dp,
+                        if (pendingJobsCount > 0) Color(0xFFF59E0B) else Color(0xFF334155),
+                        RoundedCornerShape(10.dp)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.NotificationImportant, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "Pending Driver Allocations: $pendingJobsCount",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                "Admin/Sales created orders awaiting your closest driver assignment",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 10.sp
+                            )
+                        }
+
+                        if (pendingJobsCount > 0) {
+                            Button(
+                                onClick = {
+                                    val target = jobsList.firstOrNull { it.status == "AWAITING_ASSIGNMENT" || it.status == "REJECTED" }
+                                    if (target != null) jobToAllocateDriver = target
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text("Assign Now", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF451A03))
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
             "SALES_STAFF" -> {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sales Order & Job Booking Desk", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sales Desk & Live Fleet Radar", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text("Real-time visibility into driver locations & keep-alive", color = Color(0xFF94A3B8), fontSize = 10.sp)
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "Enter customer delivery consignments • Auto-dispatch triggers push notifications across warehouse & drivers",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp
-                        )
+                        Button(
+                            onClick = { showLiveFleetModal = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("View Fleet", fontSize = 10.sp)
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
             }
+
             "ADMIN" -> {
-                // ADMIN MANAGEMENT ACTION CARDS (Vehicles, Staff, Warehouses)
+                // ADMIN CONTROL ROW: Vehicles, Staff, Godowns, and Daily Run Analytics
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { showVehiclesModal = true },
-                        shape = RoundedCornerShape(10.dp)
+                        modifier = Modifier.weight(1f).clickable { showVehiclesModal = true },
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Vehicles", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Vehicles", color = Color(0xFF94A3B8), fontSize = 9.sp)
                             }
-                            Text("${vehiclesList.size}", color = Color(0xFF38BDF8), fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                            Text("Add / Delete", color = Color(0xFF64748B), fontSize = 9.sp)
+                            Text("${vehiclesList.size}", color = Color(0xFF38BDF8), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("Manage", color = Color(0xFF64748B), fontSize = 8.sp)
                         }
                     }
 
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { showStaffModal = true },
-                        shape = RoundedCornerShape(10.dp)
+                        modifier = Modifier.weight(1f).clickable { showStaffModal = true },
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.People, contentDescription = null, tint = Color(0xFFA78BFA), modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Staff", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                Icon(Icons.Default.People, contentDescription = null, tint = Color(0xFFA78BFA), modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Staff", color = Color(0xFF94A3B8), fontSize = 9.sp)
                             }
-                            Text("${staffList.size}", color = Color(0xFFA78BFA), fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                            Text("GM & Sales", color = Color(0xFF64748B), fontSize = 9.sp)
+                            Text("${staffList.size}", color = Color(0xFFA78BFA), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("GM/Sales", color = Color(0xFF64748B), fontSize = 8.sp)
                         }
                     }
 
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { showGodownsModal = true },
-                        shape = RoundedCornerShape(10.dp)
+                        modifier = Modifier.weight(1f).clickable { showGodownsModal = true },
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Godowns", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Godowns", color = Color(0xFF94A3B8), fontSize = 9.sp)
                             }
-                            Text("${godownsList.size}", color = Color(0xFFF59E0B), fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                            Text("GPS Map Pin", color = Color(0xFF64748B), fontSize = 9.sp)
+                            Text("${godownsList.size}", color = Color(0xFFF59E0B), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("GPS Map", color = Color(0xFF64748B), fontSize = 8.sp)
+                        }
+                    }
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                        modifier = Modifier.weight(1.2f).clickable { showDailyMetricsModal = true },
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Equalizer, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Daily Run", color = Color(0xFF94A3B8), fontSize = 9.sp)
+                            }
+                            Text("Analytics", color = Color(0xFF10B981), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("KM & Dwell", color = Color(0xFF64748B), fontSize = 8.sp)
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
             }
         }
 
@@ -1274,12 +1961,22 @@ fun StaffOperationsScreen(
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().border(
+                        width = 1.dp,
+                        color = when (job.status) {
+                            "AWAITING_ASSIGNMENT" -> Color(0xFFF59E0B)
+                            "REJECTED" -> Color(0xFFEF4444)
+                            "IN PROGRESS" -> Color(0xFF3B82F6)
+                            "COMPLETED" -> Color(0xFF10B981)
+                            else -> Color(0xFF334155)
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp)
+                            .padding(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1293,11 +1990,15 @@ fun StaffOperationsScreen(
                                 fontSize = 14.sp
                             )
                             val statusBg = when (job.status) {
+                                "AWAITING_ASSIGNMENT" -> Color(0xFFF59E0B).copy(alpha = 0.2f)
+                                "REJECTED" -> Color(0xFFEF4444).copy(alpha = 0.2f)
                                 "IN PROGRESS" -> Color(0xFF3B82F6).copy(alpha = 0.2f)
                                 "COMPLETED" -> Color(0xFF10B981).copy(alpha = 0.2f)
                                 else -> Color(0xFF0284C7).copy(alpha = 0.2f)
                             }
                             val statusText = when (job.status) {
+                                "AWAITING_ASSIGNMENT" -> Color(0xFFFBBF24)
+                                "REJECTED" -> Color(0xFFF87171)
                                 "IN PROGRESS" -> Color(0xFF60A5FA)
                                 "COMPLETED" -> Color(0xFF34D399)
                                 else -> Color(0xFF38BDF8)
@@ -1307,7 +2008,7 @@ fun StaffOperationsScreen(
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = job.status,
+                                    text = if (job.status == "AWAITING_ASSIGNMENT") "AWAITING DRIVER" else job.status,
                                     color = statusText,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -1316,41 +2017,113 @@ fun StaffOperationsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        // Rejection Remark Alert Banner
+                        if (job.status == "REJECTED" && !job.rejectionReason.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                color = Color(0xFF450A0A),
+                                shape = RoundedCornerShape(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(modifier = Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        "Driver Remark: ${job.rejectionReason}",
+                                        color = Color(0xFFFCA5A5),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "From: ${job.pickupName}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "To: ${job.deliveryName}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Divider(color = Color(0xFF334155), thickness = 0.5.dp)
                         Spacer(modifier = Modifier.height(8.dp))
+                        Divider(color = Color(0xFF334155), thickness = 0.5.dp)
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Driver: ${job.assignedDriver}",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 10.sp
-                            )
-                            Text(
-                                text = job.timeAgo,
-                                color = Color(0xFF64748B),
-                                fontSize = 10.sp
-                            )
+                            Column {
+                                Text(
+                                    text = "Driver: ${job.assignedDriver}",
+                                    color = if (job.assignedDriver == "Unassigned") Color(0xFFF59E0B) else Color(0xFF94A3B8),
+                                    fontSize = 11.sp,
+                                    fontWeight = if (job.assignedDriver == "Unassigned") FontWeight.Bold else FontWeight.Normal
+                                )
+                                Text(
+                                    text = job.timeAgo,
+                                    color = Color(0xFF64748B),
+                                    fontSize = 9.sp
+                                )
+                            }
+
+                            // ACTION BUTTONS BASED ON JOB STATE & USER ROLE
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (job.status == "AWAITING_ASSIGNMENT" || job.status == "REJECTED") {
+                                    Button(
+                                        onClick = { jobToAllocateDriver = job },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (job.status == "REJECTED") Color(0xFFEF4444) else Color(0xFFF59E0B)
+                                        ),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(13.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            if (job.status == "REJECTED") "Re-Assign Driver" else "Assign Driver",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                } else if (job.status == "OFFERED") {
+                                    // Simulation controls for testing pairing flow
+                                    TextButton(
+                                        onClick = {
+                                            jobsList = jobsList.map { j ->
+                                                if (j.id == job.id) j.copy(status = "IN PROGRESS", timeAgo = "Started just now") else j
+                                            }
+                                            FleetNotificationManager.showOperationalAlert(
+                                                context,
+                                                "JOB_ACCEPTED",
+                                                "✅ Job ${job.jobNumber} Accepted!",
+                                                "Driver accepted offer with Tata Ace. Route navigation active."
+                                            )
+                                            successMessage = "Driver accepted ${job.jobNumber}. Active on route."
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("Accept", fontSize = 10.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+                                    }
+
+                                    TextButton(
+                                        onClick = { jobToRejectWithRemark = job },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("Reject", fontSize = 10.sp, color = Color(0xFFF87171), fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

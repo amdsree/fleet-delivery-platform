@@ -4,12 +4,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Driver } from '../../database/entities/driver.entity';
 import { GpsTelemetry } from '../../database/entities/gps-telemetry.entity';
 import { User } from '../../database/entities/user.entity';
 import { Role } from '../../database/entities/role.entity';
-import { DriverDutyStatus, RoleName, UserStatus } from '../../common/enums';
+import { Job } from '../../database/entities/job.entity';
+import { DriverDutyStatus, RoleName, UserStatus, JobStatus } from '../../common/enums';
 import { CreateDriverDto, UpdateDriverDto, UpdateDutyStatusDto, UpdateDriverLocationDto } from './dto/driver.dto';
 import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcryptjs';
@@ -35,6 +36,19 @@ const ALLOWED_DRIVER_TRANSITIONS: Record<DriverDutyStatus, DriverDutyStatus[]> =
   [DriverDutyStatus.SUSPENDED]: [DriverDutyStatus.OFF_DUTY],
 };
 
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3;
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 @Injectable()
 export class DriversService {
   constructor(
@@ -47,6 +61,7 @@ export class DriversService {
     @InjectRepository(Role)
     private readonly roleRepo: Repository<Role>,
     private readonly auditService: AuditService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(dto: CreateDriverDto, actorId: string, actorRole?: string) {
@@ -270,5 +285,118 @@ export class DriversService {
     }
 
     return qb.getMany();
+  }
+
+  async getDriversRadar(pickupLat?: number, pickupLng?: number) {
+    const drivers = await this.driverRepo.find({
+      relations: ['user', 'assigned_vehicles'],
+      order: { created_at: 'DESC' },
+    });
+
+    const jobRepo = this.dataSource.getRepository(Job);
+    const now = Date.now();
+
+    const radarDrivers = await Promise.all(
+      drivers.map(async (driver) => {
+        let distanceKm: number | null = null;
+        if (
+          pickupLat !== undefined &&
+          pickupLng !== undefined &&
+          driver.current_latitude &&
+          driver.current_longitude
+        ) {
+          const distM = haversineMeters(
+            Number(pickupLat),
+            Number(pickupLng),
+            Number(driver.current_latitude),
+            Number(driver.current_longitude),
+          );
+          distanceKm = Number((distM / 1000).toFixed(1));
+        }
+
+        // Active job check
+        const activeJob = await jobRepo.findOne({
+          where: [
+            { assigned_driver_id: driver.id, status: JobStatus.ACCEPTED },
+            { assigned_driver_id: driver.id, status: JobStatus.STARTED },
+            { assigned_driver_id: driver.id, status: JobStatus.IN_PROGRESS },
+            { assigned_driver_id: driver.id, status: JobStatus.OFFERED },
+          ],
+        });
+
+        const isBusy =
+          !!activeJob ||
+          [
+            DriverDutyStatus.BUSY,
+            DriverDutyStatus.JOB_OFFERED,
+            DriverDutyStatus.AT_PICKUP,
+            DriverDutyStatus.LOADING,
+            DriverDutyStatus.IN_TRANSIT,
+            DriverDutyStatus.AT_DELIVERY,
+            DriverDutyStatus.UNLOADING,
+          ].includes(driver.duty_status);
+
+        // Keep-alive status
+        const lastHb = driver.last_heartbeat_at ? new Date(driver.last_heartbeat_at).getTime() : 0;
+        const lastGps = driver.last_gps_at ? new Date(driver.last_gps_at).getTime() : 0;
+        const latestPing = Math.max(lastHb, lastGps);
+        let keepAliveStatus: 'ACTIVE' | 'IDLE' | 'OFFLINE' = 'OFFLINE';
+        if (latestPing > 0) {
+          if (now - latestPing < 120 * 1000) {
+            keepAliveStatus = 'ACTIVE';
+          } else if (now - latestPing < 900 * 1000) {
+            keepAliveStatus = 'IDLE';
+          }
+        }
+
+        return {
+          id: driver.id,
+          name: driver.user?.name || 'Driver',
+          phone: driver.user?.phone || '',
+          duty_status: driver.duty_status,
+          is_busy: isBusy,
+          active_job_number: activeJob?.job_number || null,
+          current_latitude: driver.current_latitude ? Number(driver.current_latitude) : null,
+          current_longitude: driver.current_longitude ? Number(driver.current_longitude) : null,
+          speed: driver.current_speed || 0,
+          accuracy: driver.current_accuracy || 0,
+          bearing: driver.current_bearing || 0,
+          distance_km: distanceKm,
+          is_closest: false,
+          keep_alive_status: keepAliveStatus,
+          last_ping_at: latestPing > 0 ? new Date(latestPing).toISOString() : null,
+          vehicles: (driver.assigned_vehicles || []).map((v) => ({
+            id: v.id,
+            registration_number: v.registration_number,
+            model: v.model,
+            type: v.vehicle_type,
+            payload_kg: v.payload_capacity_kg,
+          })),
+        };
+      }),
+    );
+
+    // Sort: Available drivers first, ranked by distance ascending
+    radarDrivers.sort((a, b) => {
+      if (a.is_busy !== b.is_busy) {
+        return a.is_busy ? 1 : -1;
+      }
+      if (a.distance_km !== null && b.distance_km !== null) {
+        return a.distance_km - b.distance_km;
+      }
+      return 0;
+    });
+
+    // Tag the first available driver as closest / recommended
+    const firstAvailable = radarDrivers.find((d) => !d.is_busy && d.duty_status === DriverDutyStatus.AVAILABLE);
+    if (firstAvailable) {
+      firstAvailable.is_closest = true;
+    }
+
+    return {
+      timestamp: new Date().toISOString(),
+      pickup_coords: pickupLat && pickupLng ? { lat: pickupLat, lng: pickupLng } : null,
+      drivers: radarDrivers,
+    };
   }
 }

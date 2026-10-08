@@ -51,6 +51,17 @@ export class DriversController {
     });
   }
 
+  @Get('radar')
+  async getDriversRadar(
+    @Query('pickup_lat') pickup_lat?: string,
+    @Query('pickup_lng') pickup_lng?: string,
+  ) {
+    return this.driversService.getDriversRadar(
+      pickup_lat ? parseFloat(pickup_lat) : undefined,
+      pickup_lng ? parseFloat(pickup_lng) : undefined,
+    );
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.driversService.findOne(id);

@@ -169,17 +169,27 @@ class MainActivity : ComponentActivity() {
                             }
                             "OFFER" -> {
                                 JobOfferScreen(
-                                    onAccept = {
+                                    onAccept = { jobId, selectedVehicle ->
+                                        driverVehicle = selectedVehicle
+                                        prefs.edit().putString("driver_vehicle", selectedVehicle).apply()
                                         startLocationService()
                                         com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
                                             this@MainActivity,
-                                            "JOB_ASSIGNED",
-                                            "Job Assigned: #10045",
-                                            "Route assigned to Peenya & Malleshwaram. Proceed to pickup."
+                                            "JOB_ACCEPTED",
+                                            "Job Started: $jobId",
+                                            "Vehicle $selectedVehicle selected based on parcel size. Keep-alive GPS active."
                                         )
                                         currentScreen = "ACTIVE_JOB"
                                     },
-                                    onReject = { currentScreen = "HOME" }
+                                    onReject = { jobId, reason, remarks ->
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "JOB_REJECTED",
+                                            "⚠️ Job Declined by Driver",
+                                            "Rejected $jobId ($reason: $remarks). Godown Manager notified to assign another driver."
+                                        )
+                                        currentScreen = "HOME"
+                                    }
                                 )
                             }
                             "ACTIVE_JOB" -> {

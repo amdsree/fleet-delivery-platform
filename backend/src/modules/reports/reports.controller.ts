@@ -16,6 +16,12 @@ export class ReportsController {
     return this.reportsService.getDashboardSummary();
   }
 
+  @Get('drivers-daily')
+  @RequirePermissions(PermissionCode.REPORT_VIEW)
+  async getDriversDailyMetrics(@Query('date') date?: string) {
+    return this.reportsService.getDriversDailyMetrics(date);
+  }
+
   @Get('drivers')
   @RequirePermissions(PermissionCode.REPORT_VIEW)
   async getDriverReport(

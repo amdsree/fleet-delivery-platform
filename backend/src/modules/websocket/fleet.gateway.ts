@@ -43,7 +43,7 @@ export class FleetGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // Automatically join personal driver room if driver
       if (payload.role === 'DRIVER') {
         client.join(`driver:${payload.sub}`);
-      } else if (payload.role === 'ADMIN' || payload.role === 'GODOWN_MANAGER') {
+      } else if (payload.role === 'ADMIN' || payload.role === 'GODOWN_MANAGER' || payload.role === 'SALES_STAFF') {
         client.join('fleet:admin');
       }
 

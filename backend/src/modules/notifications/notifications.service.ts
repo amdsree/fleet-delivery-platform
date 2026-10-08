@@ -17,7 +17,10 @@ export interface SendNotificationParams {
 
 export interface StakeholderEventParams {
   event:
+    | 'JOB_CREATED'
     | 'JOB_ASSIGNED'
+    | 'JOB_ACCEPTED'
+    | 'JOB_REJECTED'
     | 'LOCATION_REACHED'
     | 'MATERIAL_COLLECTED'
     | 'MATERIAL_DELIVERED'
@@ -31,6 +34,10 @@ export interface StakeholderEventParams {
   stopSequence?: number;
   stopType?: string;
   orderNumber?: string;
+  rejectionReason?: string;
+  remarks?: string;
+  vehicleInfo?: string;
+  createdBy?: string;
   details?: Record<string, any>;
 }
 
@@ -110,11 +117,30 @@ export class NotificationsService {
     const seq = params.stopSequence !== undefined ? `Stop #${params.stopSequence}` : 'Stop';
 
     switch (params.event) {
+      case 'JOB_CREATED':
+        adminTitle = `New Job Created: #${params.jobNumber}`;
+        adminMessage = `Delivery job created by ${params.createdBy || 'Staff'}. Awaiting Godown Manager driver allocation.`;
+        break;
+
       case 'JOB_ASSIGNED':
         adminTitle = `Job Assigned: #${params.jobNumber}`;
-        adminMessage = `${dName} has been assigned to Job #${params.jobNumber}. Ready for dispatch.`;
-        driverTitle = `New Job Assigned: #${params.jobNumber}`;
-        driverMessage = `You have a new route assigned (Job #${params.jobNumber}). Tap to view stops.`;
+        adminMessage = `${dName} has been assigned to Job #${params.jobNumber}. Waiting for driver confirmation.`;
+        driverTitle = `New Job Offer: #${params.jobNumber}`;
+        driverMessage = `New dispatch route assigned to you (Job #${params.jobNumber}). Tap to review parcel and choose vehicle.`;
+        break;
+
+      case 'JOB_ACCEPTED':
+        adminTitle = `Job Accepted: #${params.jobNumber}`;
+        adminMessage = `${dName} accepted Job #${params.jobNumber}${params.vehicleInfo ? ' with ' + params.vehicleInfo : ''}. Preparing to start.`;
+        driverTitle = `Job #${params.jobNumber} Confirmed`;
+        driverMessage = `You accepted Job #${params.jobNumber}. Tap to start navigation.`;
+        break;
+
+      case 'JOB_REJECTED':
+        adminTitle = `⚠️ Job Rejected by Driver: #${params.jobNumber}`;
+        adminMessage = `${dName} rejected Job #${params.jobNumber}. Reason: ${params.rejectionReason || 'Declined'}${params.remarks ? ' (' + params.remarks + ')' : ''}. Action required: Assign another driver.`;
+        driverTitle = `Job #${params.jobNumber} Declined`;
+        driverMessage = `You rejected Job #${params.jobNumber}. Notification sent to Godown Manager.`;
         break;
 
       case 'LOCATION_REACHED':
