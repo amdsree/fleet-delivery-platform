@@ -1,5 +1,6 @@
 package com.fleet.delivery.ui
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,145 +22,187 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val prefs = getSharedPreferences("fleet_driver_prefs", Context.MODE_PRIVATE)
+
         setContent {
+            var isLoggedIn by remember { 
+                mutableStateOf(prefs.getBoolean("is_logged_in", true)) 
+            }
+            var driverName by remember { 
+                mutableStateOf(prefs.getString("driver_name", "Kiran Kumar") ?: "Kiran Kumar") 
+            }
+            var driverVehicle by remember { 
+                mutableStateOf(prefs.getString("driver_vehicle", "KA-04-AB-1234 (Tata Ace)") ?: "KA-04-AB-1234 (Tata Ace)") 
+            }
             var currentScreen by remember { mutableStateOf("HOME") }
 
-            BackHandler(enabled = currentScreen != "HOME") {
-                currentScreen = "HOME"
-            }
-
-            Scaffold(
-                bottomBar = {
-                    NavigationBar(
-                        containerColor = Color(0xFF1E293B),
-                        contentColor = Color.White
-                    ) {
-                        NavigationBarItem(
-                            selected = currentScreen == "HOME",
-                            onClick = { currentScreen = "HOME" },
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-                            label = { Text("Home") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF10B981),
-                                selectedTextColor = Color(0xFF10B981),
-                                unselectedIconColor = Color(0xFF94A3B8),
-                                unselectedTextColor = Color(0xFF94A3B8),
-                                indicatorColor = Color(0xFF0F172A)
-                            )
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == "OFFER",
-                            onClick = { currentScreen = "OFFER" },
-                            icon = { Icon(Icons.Default.Notifications, contentDescription = "Offer") },
-                            label = { Text("Offer") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF38BDF8),
-                                selectedTextColor = Color(0xFF38BDF8),
-                                unselectedIconColor = Color(0xFF94A3B8),
-                                unselectedTextColor = Color(0xFF94A3B8),
-                                indicatorColor = Color(0xFF0F172A)
-                            )
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == "ACTIVE_JOB",
-                            onClick = { currentScreen = "ACTIVE_JOB" },
-                            icon = { Icon(Icons.Default.LocalShipping, contentDescription = "Active Trip") },
-                            label = { Text("Trip") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFFFBBF24),
-                                selectedTextColor = Color(0xFFFBBF24),
-                                unselectedIconColor = Color(0xFF94A3B8),
-                                unselectedTextColor = Color(0xFF94A3B8),
-                                indicatorColor = Color(0xFF0F172A)
-                            )
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == "POD",
-                            onClick = { currentScreen = "POD" },
-                            icon = { Icon(Icons.Default.CheckCircle, contentDescription = "POD Signature") },
-                            label = { Text("POD") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFFA855F7),
-                                selectedTextColor = Color(0xFFA855F7),
-                                unselectedIconColor = Color(0xFF94A3B8),
-                                unselectedTextColor = Color(0xFF94A3B8),
-                                indicatorColor = Color(0xFF0F172A)
-                            )
-                        )
+            if (!isLoggedIn) {
+                LoginScreen(
+                    onLoginSuccess = { name, email, token ->
+                        val vehicleName = when (name) {
+                            "Driver 1" -> "KA-04-AB-1234 (Tata Ace)"
+                            "Driver 2" -> "KA-05-CD-5678 (Eicher Pro)"
+                            "Driver 3" -> "KA-51-EF-9012 (Mahindra Bolero)"
+                            else -> "KA-04-AB-1234 (Tata Ace)"
+                        }
+                        prefs.edit()
+                            .putBoolean("is_logged_in", true)
+                            .putString("driver_name", name)
+                            .putString("driver_email", email)
+                            .putString("driver_vehicle", vehicleName)
+                            .putString("auth_token", token)
+                            .apply()
+                        driverName = name
+                        driverVehicle = vehicleName
+                        isLoggedIn = true
+                        currentScreen = "HOME"
                     }
+                )
+            } else {
+                BackHandler(enabled = currentScreen != "HOME") {
+                    currentScreen = "HOME"
                 }
-            ) { innerPadding ->
-                Box(modifier = Modifier.padding(innerPadding)) {
-                    when (currentScreen) {
-                        "HOME" -> {
-                            DriverHomeScreen(
-                                isVehicleMoving = false,
-                                onViewJobClick = { currentScreen = "ACTIVE_JOB" },
-                                onDutyToggle = { isOnDuty ->
-                                    if (isOnDuty) {
-                                        startLocationService()
-                                    } else {
+
+                Scaffold(
+                    bottomBar = {
+                        NavigationBar(
+                            containerColor = Color(0xFF1E293B),
+                            contentColor = Color.White
+                        ) {
+                            NavigationBarItem(
+                                selected = currentScreen == "HOME",
+                                onClick = { currentScreen = "HOME" },
+                                icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
+                                label = { Text("Home") },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color(0xFF10B981),
+                                    selectedTextColor = Color(0xFF10B981),
+                                    unselectedIconColor = Color(0xFF94A3B8),
+                                    unselectedTextColor = Color(0xFF94A3B8),
+                                    indicatorColor = Color(0xFF0F172A)
+                                )
+                            )
+                            NavigationBarItem(
+                                selected = currentScreen == "OFFER",
+                                onClick = { currentScreen = "OFFER" },
+                                icon = { Icon(Icons.Default.Notifications, contentDescription = "Offer") },
+                                label = { Text("Offer") },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color(0xFF38BDF8),
+                                    selectedTextColor = Color(0xFF38BDF8),
+                                    unselectedIconColor = Color(0xFF94A3B8),
+                                    unselectedTextColor = Color(0xFF94A3B8),
+                                    indicatorColor = Color(0xFF0F172A)
+                                )
+                            )
+                            NavigationBarItem(
+                                selected = currentScreen == "ACTIVE_JOB",
+                                onClick = { currentScreen = "ACTIVE_JOB" },
+                                icon = { Icon(Icons.Default.LocalShipping, contentDescription = "Active Trip") },
+                                label = { Text("Trip") },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color(0xFFFBBF24),
+                                    selectedTextColor = Color(0xFFFBBF24),
+                                    unselectedIconColor = Color(0xFF94A3B8),
+                                    unselectedTextColor = Color(0xFF94A3B8),
+                                    indicatorColor = Color(0xFF0F172A)
+                                )
+                            )
+                            NavigationBarItem(
+                                selected = currentScreen == "POD",
+                                onClick = { currentScreen = "POD" },
+                                icon = { Icon(Icons.Default.CheckCircle, contentDescription = "POD Signature") },
+                                label = { Text("POD") },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color(0xFFA855F7),
+                                    selectedTextColor = Color(0xFFA855F7),
+                                    unselectedIconColor = Color(0xFF94A3B8),
+                                    unselectedTextColor = Color(0xFF94A3B8),
+                                    indicatorColor = Color(0xFF0F172A)
+                                )
+                            )
+                        }
+                    }
+                ) { innerPadding ->
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        when (currentScreen) {
+                            "HOME" -> {
+                                DriverHomeScreen(
+                                    driverName = driverName,
+                                    vehicleNumber = driverVehicle,
+                                    isVehicleMoving = false,
+                                    onViewJobClick = { currentScreen = "ACTIVE_JOB" },
+                                    onDutyToggle = { isOnDuty ->
+                                        if (isOnDuty) {
+                                            startLocationService()
+                                        } else {
+                                            stopLocationService()
+                                        }
+                                    },
+                                    onLogoutClick = {
                                         stopLocationService()
+                                        prefs.edit().putBoolean("is_logged_in", false).apply()
+                                        isLoggedIn = false
                                     }
-                                }
-                            )
-                        }
-                        "OFFER" -> {
-                            JobOfferScreen(
-                                onAccept = {
-                                    startLocationService()
-                                    com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
-                                        this@MainActivity,
-                                        "JOB_ASSIGNED",
-                                        "Job Assigned: #10045",
-                                        "Route assigned to Peenya & Malleshwaram. Proceed to pickup."
-                                    )
-                                    currentScreen = "ACTIVE_JOB"
-                                },
-                                onReject = { currentScreen = "HOME" }
-                            )
-                        }
-                        "ACTIVE_JOB" -> {
-                            ActiveJobScreen(
-                                onArriveClick = {
-                                    com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
-                                        this@MainActivity,
-                                        "LOCATION_REACHED",
-                                        "Location Reached: Alpha Wholesale",
-                                        "Arrival recorded. Verified within 50m geofence."
-                                    )
-                                },
-                                onStartOperationClick = { /* start loading/unloading */ },
-                                onOpenPodClick = { currentScreen = "POD" },
-                                onCompleteStopClick = {
-                                    com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
-                                        this@MainActivity,
-                                        "MATERIAL_COLLECTED",
-                                        "Material Collected Successfully",
-                                        "Pickup completed at Alpha Wholesale. En route to Metro Hypermarket."
-                                    )
-                                }
-                            )
-                        }
-                        "POD" -> {
-                            PodScreen(
-                                onSubmitPod = { _, _, _, _, _, _ ->
-                                    com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
-                                        this@MainActivity,
-                                        "MATERIAL_DELIVERED",
-                                        "Material Delivered (POD Verified)",
-                                        "Customer signature & delivery verified at Metro Hypermarket."
-                                    )
-                                    com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
-                                        this@MainActivity,
-                                        "JOB_FINISHED",
-                                        "Job Finished: #10045",
-                                        "Trip successfully completed! You are now available for new dispatch offers."
-                                    )
-                                    currentScreen = "HOME"
-                                },
-                                onCancel = { currentScreen = "ACTIVE_JOB" }
-                            )
+                                )
+                            }
+                            "OFFER" -> {
+                                JobOfferScreen(
+                                    onAccept = {
+                                        startLocationService()
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "JOB_ASSIGNED",
+                                            "Job Assigned: #10045",
+                                            "Route assigned to Peenya & Malleshwaram. Proceed to pickup."
+                                        )
+                                        currentScreen = "ACTIVE_JOB"
+                                    },
+                                    onReject = { currentScreen = "HOME" }
+                                )
+                            }
+                            "ACTIVE_JOB" -> {
+                                ActiveJobScreen(
+                                    onArriveClick = {
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "LOCATION_REACHED",
+                                            "Location Reached: Alpha Wholesale",
+                                            "Arrival recorded. Verified within 50m geofence."
+                                        )
+                                    },
+                                    onStartOperationClick = { /* start loading/unloading */ },
+                                    onOpenPodClick = { currentScreen = "POD" },
+                                    onCompleteStopClick = {
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "MATERIAL_COLLECTED",
+                                            "Material Collected Successfully",
+                                            "Pickup completed at Alpha Wholesale. En route to Metro Hypermarket."
+                                        )
+                                    }
+                                )
+                            }
+                            "POD" -> {
+                                PodScreen(
+                                    onSubmitPod = { _, _, _, _, _, _ ->
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "MATERIAL_DELIVERED",
+                                            "Material Delivered (POD Verified)",
+                                            "Customer signature & delivery verified at Metro Hypermarket."
+                                        )
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "JOB_FINISHED",
+                                            "Job Finished: #10045",
+                                            "Trip successfully completed! You are now available for new dispatch offers."
+                                        )
+                                        currentScreen = "HOME"
+                                    },
+                                    onCancel = { currentScreen = "ACTIVE_JOB" }
+                                )
+                            }
                         }
                     }
                 }

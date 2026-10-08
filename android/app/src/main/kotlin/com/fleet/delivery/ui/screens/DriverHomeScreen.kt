@@ -18,12 +18,43 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun DriverHomeScreen(
+    driverName: String = "Kiran Kumar",
+    vehicleNumber: String = "KA-04-AB-1234 (Tata Ace)",
     isVehicleMoving: Boolean = false,
     onViewJobClick: (String) -> Unit,
-    onDutyToggle: (Boolean) -> Unit
+    onDutyToggle: (Boolean) -> Unit,
+    onLogoutClick: () -> Unit = {}
 ) {
     var isDutyActive by remember { mutableStateOf(true) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Log Out?", fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to log out of Fleet Driver? Your active GPS duty tracking will be stopped.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutDialog = false
+                        onLogoutClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                ) {
+                    Text("Log Out")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -70,15 +101,15 @@ fun DriverHomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Welcome, Kiran Kumar",
+                    text = "Welcome, $driverName",
                     color = Color.White,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Vehicle: KA-04-AB-1234 (Tata Ace)",
+                    text = "Vehicle: $vehicleNumber",
                     color = Color(0xFF94A3B8),
                     fontSize = 12.sp
                 )
@@ -88,9 +119,9 @@ fun DriverHomeScreen(
                 Text(
                     text = if (isDutyActive) "ON DUTY" else "OFF DUTY",
                     color = if (isDutyActive) Color(0xFF10B981) else Color(0xFF94A3B8),
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(end = 8.dp)
+                    modifier = Modifier.padding(end = 4.dp)
                 )
                 Switch(
                     checked = isDutyActive,
@@ -103,6 +134,23 @@ fun DriverHomeScreen(
                         checkedTrackColor = Color(0xFF10B981)
                     )
                 )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Logout Button
+                IconButton(
+                    onClick = { showLogoutDialog = true },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF334155), shape = RoundedCornerShape(8.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Logout,
+                        contentDescription = "Logout",
+                        tint = Color(0xFFF87171),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 

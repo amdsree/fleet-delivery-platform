@@ -11,6 +11,7 @@ import {
   Flag,
   X,
   Check,
+  LogOut,
 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import api from '@/lib/api';
@@ -31,6 +32,26 @@ export default function Header() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [currentUser, setCurrentUser] = useState<{ name: string; role: string } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('fleet_user');
+      if (stored) {
+        try {
+          setCurrentUser(JSON.parse(stored));
+        } catch {}
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('fleet_token');
+      localStorage.removeItem('fleet_user');
+      window.location.href = '/login';
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -253,12 +274,19 @@ export default function Header() {
 
         <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
           <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-emerald-400">
-            AD
+            {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : 'AD'}
           </div>
-          <div className="text-left text-xs">
-            <p className="font-semibold text-slate-200">Admin User</p>
-            <p className="text-slate-500">Super Administrator</p>
+          <div className="text-left text-xs hidden sm:block">
+            <p className="font-semibold text-slate-200">{currentUser?.name || 'Admin User'}</p>
+            <p className="text-slate-500 capitalize">{currentUser?.role?.replace('_', ' ') || 'Super Administrator'}</p>
           </div>
+          <button
+            onClick={handleLogout}
+            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-900 rounded-lg transition-colors ml-1"
+            title="Log Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>
