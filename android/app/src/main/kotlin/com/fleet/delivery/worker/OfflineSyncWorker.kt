@@ -20,13 +20,7 @@ class OfflineSyncWorker(
 
     private val db = AppDatabase.getInstance(appContext)
 
-    private val api: FleetApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:4000/api/v1/") // Local emulator loopback
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(FleetApiService::class.java)
-    }
+    private val api: FleetApiService = com.fleet.delivery.data.remote.ApiClient.service
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
