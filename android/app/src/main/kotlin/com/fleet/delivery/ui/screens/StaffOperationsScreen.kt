@@ -2,11 +2,13 @@ package com.fleet.delivery.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +40,10 @@ data class UiJobItem(
     val timeAgo: String,
     val rejectionReason: String? = null,
     val pickupLat: Double = 13.0285,
-    val pickupLng: Double = 77.5195
+    val pickupLng: Double = 77.5195,
+    val deliveryDate: String = "Today",
+    val completedAt: String? = null,
+    val podSigned: Boolean = false
 )
 
 data class UiVehicleItem(
@@ -294,6 +299,11 @@ fun StaffOperationsScreen(
         )
     }
 
+    var currentFeedTab by remember { mutableStateOf("ACTIVE") }
+    var selectedDriverFilter by remember { mutableStateOf("All Drivers") }
+    var selectedDateFilter by remember { mutableStateOf("All Dates") }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+
     var jobsList by remember {
         mutableStateOf(
             listOf(
@@ -309,7 +319,8 @@ fun StaffOperationsScreen(
                     timeAgo = "Just now",
                     rejectionReason = null,
                     pickupLat = 13.0285,
-                    pickupLng = 77.5195
+                    pickupLng = 77.5195,
+                    deliveryDate = "Today"
                 ),
                 UiJobItem(
                     id = "1",
@@ -318,12 +329,13 @@ fun StaffOperationsScreen(
                     pickupName = "Peenya Central Godown",
                     deliveryName = "Metro Hypermarket Malleshwaram",
                     cargoDetails = "50 Cartons Packaged Foods (350 kg)",
-                    assignedDriver = "Kiran Kumar (KA-04-AB-1234)",
+                    assignedDriver = "Kiran Kumar",
                     priority = "High",
                     timeAgo = "12 mins ago",
                     rejectionReason = null,
                     pickupLat = 13.0285,
-                    pickupLng = 77.5195
+                    pickupLng = 77.5195,
+                    deliveryDate = "Today"
                 ),
                 UiJobItem(
                     id = "2",
@@ -337,7 +349,8 @@ fun StaffOperationsScreen(
                     timeAgo = "25 mins ago",
                     rejectionReason = "Vehicle capacity: flat tire - unable to take cargo load",
                     pickupLat = 12.9698,
-                    pickupLng = 77.7500
+                    pickupLng = 77.7500,
+                    deliveryDate = "Today"
                 ),
                 UiJobItem(
                     id = "3",
@@ -346,12 +359,100 @@ fun StaffOperationsScreen(
                     pickupName = "Electronic City Warehouse",
                     deliveryName = "Koramangala Logistics Bay",
                     cargoDetails = "15 Crates Electronics (120 kg)",
-                    assignedDriver = "Sunil V (KA-51-EF-9012)",
+                    assignedDriver = "Sunil V",
                     priority = "Critical",
                     timeAgo = "1 hour ago",
                     rejectionReason = null,
                     pickupLat = 12.8452,
-                    pickupLng = 77.6602
+                    pickupLng = 77.6602,
+                    deliveryDate = "Today",
+                    completedAt = "Today, 05:15 PM",
+                    podSigned = true
+                ),
+                UiJobItem(
+                    id = "4",
+                    jobNumber = "JOB #10042",
+                    status = "COMPLETED",
+                    pickupName = "Peenya Central Godown",
+                    deliveryName = "Yeshwanthpur Industrial Complex",
+                    cargoDetails = "30 Barrels Chemical Solvents (300 kg)",
+                    assignedDriver = "Kiran Kumar",
+                    priority = "High",
+                    timeAgo = "4 hours ago",
+                    rejectionReason = null,
+                    pickupLat = 13.0285,
+                    pickupLng = 77.5195,
+                    deliveryDate = "Today",
+                    completedAt = "Today, 02:40 PM",
+                    podSigned = true
+                ),
+                UiJobItem(
+                    id = "5",
+                    jobNumber = "JOB #10041",
+                    status = "COMPLETED",
+                    pickupName = "Whitefield Depot",
+                    deliveryName = "ITPL Techno Park Tower B",
+                    cargoDetails = "12 Pallets IT Server Hardware (180 kg)",
+                    assignedDriver = "Ramesh Babu",
+                    priority = "High",
+                    timeAgo = "1 day ago",
+                    rejectionReason = null,
+                    pickupLat = 12.9698,
+                    pickupLng = 77.7500,
+                    deliveryDate = "Yesterday",
+                    completedAt = "Yesterday, 06:10 PM",
+                    podSigned = true
+                ),
+                UiJobItem(
+                    id = "6",
+                    jobNumber = "JOB #10040",
+                    status = "COMPLETED",
+                    pickupName = "Outer Ring Road Godown",
+                    deliveryName = "Bellandur Retail Plaza",
+                    cargoDetails = "45 Boxes Apparel & Retail Goods (210 kg)",
+                    assignedDriver = "Anand Rao",
+                    priority = "Normal",
+                    timeAgo = "1 day ago",
+                    rejectionReason = null,
+                    pickupLat = 12.9352,
+                    pickupLng = 77.6890,
+                    deliveryDate = "Yesterday",
+                    completedAt = "Yesterday, 03:20 PM",
+                    podSigned = true
+                ),
+                UiJobItem(
+                    id = "7",
+                    jobNumber = "JOB #10039",
+                    status = "COMPLETED",
+                    pickupName = "Peenya Central Godown",
+                    deliveryName = "Jayanagar Commercial Street",
+                    cargoDetails = "25 Sacks Organic Grains (500 kg)",
+                    assignedDriver = "Kiran Kumar",
+                    priority = "Normal",
+                    timeAgo = "2 days ago",
+                    rejectionReason = null,
+                    pickupLat = 13.0285,
+                    pickupLng = 77.5195,
+                    deliveryDate = "Oct 6, 2026",
+                    completedAt = "Oct 6, 2026, 04:45 PM",
+                    podSigned = true
+                ),
+                UiJobItem(
+                    id = "8",
+                    jobNumber = "JOB #10038",
+                    status = "COMPLETED",
+                    pickupName = "Electronic City Warehouse",
+                    deliveryName = "Bannerghatta Fulfilment Center",
+                    cargoDetails = "60 Cartons Pharmaceutical Supplies (150 kg)",
+                    assignedDriver = "Sunil V",
+                    priority = "Critical",
+                    timeAgo = "3 days ago",
+                    rejectionReason = null,
+                    pickupLat = 12.8452,
+                    pickupLng = 77.6602,
+                    deliveryDate = "Oct 5, 2026",
+                    completedAt = "Oct 5, 2026, 11:30 AM",
+                    podSigned = true
                 )
             )
         )
@@ -426,9 +527,9 @@ fun StaffOperationsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -481,9 +582,9 @@ fun StaffOperationsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -519,8 +620,9 @@ fun StaffOperationsScreen(
                 ) {
                     // Location & Refresh bar
                     Surface(
-                        color = Color(0xFF0F172A),
+                        color = Color(0xFFF8FAFC),
                         shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -529,8 +631,8 @@ fun StaffOperationsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text("📍 Lat: ${job.pickupLat}, Lng: ${job.pickupLng}", color = Color(0xFF94A3B8), fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-                                Text(lastGpsRefreshTimestamp, color = Color(0xFF38BDF8), fontSize = 10.sp)
+                                Text("📍 Lat: ${job.pickupLat}, Lng: ${job.pickupLng}", color = Color(0xFF64748B), fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                                Text(lastGpsRefreshTimestamp, color = Color(0xFF1D4ED8), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                             }
                             Button(
                                 onClick = {
@@ -567,21 +669,21 @@ fun StaffOperationsScreen(
                             .minByOrNull { it.distanceKm }?.id
                     }
 
-                    Text("Active Fleet Drivers in Operational Radius (${job.pickupName}):", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Active Fleet Drivers in Operational Radius (${job.pickupName}):", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.Bold)
 
                     // Driver Cards
                     driversWithCalculatedDist.forEach { drv ->
                         val isClosest = drv.id == closestAvailableDriverId
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isClosest) Color(0xFF064E3B) else if (drv.isBusy) Color(0xFF2E1065) else Color(0xFF1E293B)
+                                containerColor = if (isClosest) Color(0xFFF0FDF4) else if (drv.isBusy) Color(0xFFFEF2F2) else Color.White
                             ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .border(
                                     width = if (isClosest) 1.5.dp else 1.dp,
-                                    color = if (isClosest) Color(0xFF10B981) else if (drv.isBusy) Color(0xFF9333EA) else Color(0xFF334155),
+                                    color = if (isClosest) Color(0xFF22C55E) else if (drv.isBusy) Color(0xFFFCA5A5) else Color(0xFFE2E8F0),
                                     shape = RoundedCornerShape(10.dp)
                                 )
                         ) {
@@ -592,8 +694,8 @@ fun StaffOperationsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(drv.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Text("${drv.vehicleName} • ${drv.vehicleReg}", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                                        Text(drv.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("${drv.vehicleName} • ${drv.vehicleReg}", color = Color(0xFF64748B), fontSize = 11.sp)
                                     }
 
                                     if (isClosest) {
@@ -681,9 +783,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -740,9 +842,9 @@ fun StaffOperationsScreen(
                     Text("Cancel", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -780,8 +882,9 @@ fun StaffOperationsScreen(
 
                     driversRadarList.forEach { drv ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -790,7 +893,7 @@ fun StaffOperationsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(drv.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(drv.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     Surface(
                                         color = if (drv.keepAliveStatus == "ACTIVE") Color(0xFF064E3B) else Color(0xFF1E293B),
                                         shape = RoundedCornerShape(4.dp)
@@ -805,7 +908,7 @@ fun StaffOperationsScreen(
                                     }
                                 }
 
-                                Text("Vehicle: ${drv.vehicleReg} (${drv.vehicleName})", color = Color(0xFF38BDF8), fontSize = 11.sp)
+                                Text("Vehicle: ${drv.vehicleReg} (${drv.vehicleName})", color = Color(0xFF1D4ED8), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 Text("📍 Lat: ${drv.latitude}, Lng: ${drv.longitude} • Speed: ${drv.speedKmh} km/h", color = Color(0xFF10B981), fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
 
                                 Row(
@@ -834,9 +937,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -871,8 +974,9 @@ fun StaffOperationsScreen(
                 ) {
                     dailyMetrics.forEach { m ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -881,7 +985,7 @@ fun StaffOperationsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(m.driverName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(m.driverName, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     Surface(color = Color(0xFF064E3B), shape = RoundedCornerShape(4.dp)) {
                                         Text("🟢 ${m.keepAliveStatus}", color = Color(0xFF6EE7B7), fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
                                     }
@@ -900,7 +1004,7 @@ fun StaffOperationsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text("Vehicles Used:", color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                    Text(m.vehiclesUsed, color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(m.vehiclesUsed, color = Color(0xFF1D4ED8), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                 }
 
                                 Row(
@@ -929,9 +1033,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -970,8 +1074,9 @@ fun StaffOperationsScreen(
                 ) {
                     driversRadarList.forEach { d ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -983,7 +1088,7 @@ fun StaffOperationsScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(d.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(d.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Surface(
                                             color = when (d.dutyStatus) {
@@ -1035,9 +1140,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1173,9 +1278,9 @@ fun StaffOperationsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1214,8 +1319,9 @@ fun StaffOperationsScreen(
                 ) {
                     vehiclesList.forEach { v ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -1226,7 +1332,7 @@ fun StaffOperationsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(v.regNumber, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text(v.regNumber, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     Text("${v.model} • ${v.type}", color = Color(0xFF94A3B8), fontSize = 11.sp)
                                     Text("Capacity: ${v.capacityKg} • Status: ${v.status}", color = Color(0xFF10B981), fontSize = 10.sp)
                                 }
@@ -1249,9 +1355,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1313,9 +1419,9 @@ fun StaffOperationsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1389,8 +1495,9 @@ fun StaffOperationsScreen(
                     ) {
                         filteredStaff.forEach { s ->
                             Card(
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
                                 shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
@@ -1401,9 +1508,9 @@ fun StaffOperationsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(s.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(s.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         Text(s.email, color = Color(0xFF94A3B8), fontSize = 11.sp)
-                                        Text("📞 ${s.phone} • 📍 ${s.assignedUnit}", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+                                        Text("📞 ${s.phone} • 📍 ${s.assignedUnit}", color = Color(0xFF64748B), fontSize = 10.sp)
                                     }
                                     IconButton(
                                         onClick = {
@@ -1425,9 +1532,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1506,9 +1613,9 @@ fun StaffOperationsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1547,8 +1654,9 @@ fun StaffOperationsScreen(
                 ) {
                     godownsList.forEach { g ->
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
                             shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(10.dp)) {
@@ -1558,7 +1666,7 @@ fun StaffOperationsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(g.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(g.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         Text(g.address, color = Color(0xFF94A3B8), fontSize = 11.sp)
                                         Text(
                                             "📍 Lat: ${g.latitude}, Lng: ${g.longitude} • Geofence: ${g.radiusMeters}m",
@@ -1605,9 +1713,9 @@ fun StaffOperationsScreen(
                     Text("Close", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1657,11 +1765,11 @@ fun StaffOperationsScreen(
                                         newGodownLng = "77.5195"
                                         if (newGodownName.isBlank()) newGodownName = "Peenya Depot #2"
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF)),
                                     contentPadding = PaddingValues(4.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("Peenya", fontSize = 9.sp, color = Color(0xFF10B981))
+                                    Text("Peenya", fontSize = 9.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
                                 }
                                 Button(
                                     onClick = {
@@ -1669,11 +1777,11 @@ fun StaffOperationsScreen(
                                         newGodownLng = "77.7500"
                                         if (newGodownName.isBlank()) newGodownName = "Whitefield Depot #2"
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF)),
                                     contentPadding = PaddingValues(4.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("Whitefield", fontSize = 9.sp, color = Color(0xFF10B981))
+                                    Text("Whitefield", fontSize = 9.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
                                 }
                                 Button(
                                     onClick = {
@@ -1681,11 +1789,11 @@ fun StaffOperationsScreen(
                                         newGodownLng = "77.6602"
                                         if (newGodownName.isBlank()) newGodownName = "E-City Depot"
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF)),
                                     contentPadding = PaddingValues(4.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text("E-City", fontSize = 9.sp, color = Color(0xFF10B981))
+                                    Text("E-City", fontSize = 9.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -1762,9 +1870,9 @@ fun StaffOperationsScreen(
                     Text("Cancel")
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1804,12 +1912,12 @@ fun StaffOperationsScreen(
                         Text("Tap to Select", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showPickupPicker = true }
-                            .border(1.dp, Color(0xFF10B981).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color(0xFFBFDBFE), RoundedCornerShape(8.dp))
                     ) {
                         Row(
                             modifier = Modifier.padding(10.dp),
@@ -1820,7 +1928,7 @@ fun StaffOperationsScreen(
                                 Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
-                                    Text(selectedPickup, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(selectedPickup, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                     Text(
                                         "📍 Lat: $selectedPickupLat, Lng: $selectedPickupLng",
                                         color = Color(0xFF10B981),
@@ -1843,12 +1951,12 @@ fun StaffOperationsScreen(
                         Text("Tap to Select / Custom", color = Color(0xFF38BDF8), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showDeliveryPicker = true }
-                            .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color(0xFFBFDBFE), RoundedCornerShape(8.dp))
                     ) {
                         Row(
                             modifier = Modifier.padding(10.dp),
@@ -1859,7 +1967,7 @@ fun StaffOperationsScreen(
                                 Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
-                                    Text(selectedDelivery, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(selectedDelivery, color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                                     Text(if (isCustomDeliveryMode) "Custom Destination" else "Standard Retail / Inter-hub Destination", color = Color(0xFF94A3B8), fontSize = 10.sp)
                                 }
                             }
@@ -1895,8 +2003,9 @@ fun StaffOperationsScreen(
                     }
 
                     Surface(
-                        color = Color(0xFF0F2B48),
+                        color = Color(0xFFEFF6FF),
                         shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1904,8 +2013,9 @@ fun StaffOperationsScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 "Job will trigger immediate notification on logged-in Godown Manager's phone for driver allocation.",
-                                color = Color(0xFF93C5FD),
-                                fontSize = 10.sp
+                                color = Color(0xFF1D4ED8),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -1948,9 +2058,9 @@ fun StaffOperationsScreen(
                     Text("Create Job & Notify Godown Manager", fontWeight = FontWeight.Bold)
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -1990,7 +2100,7 @@ fun StaffOperationsScreen(
                         val isSelected = selectedPickup == g.name
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) Color(0xFF064E3B) else Color(0xFF0F172A)
+                                containerColor = if (isSelected) Color(0xFFEFF6FF) else Color.White
                             ),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
@@ -2003,7 +2113,7 @@ fun StaffOperationsScreen(
                                 }
                                 .border(
                                     width = if (isSelected) 1.5.dp else 1.dp,
-                                    color = if (isSelected) Color(0xFF10B981) else Color(0xFF334155),
+                                    color = if (isSelected) Color(0xFF1D4ED8) else Color(0xFFE2E8F0),
                                     shape = RoundedCornerShape(8.dp)
                                 )
                         ) {
@@ -2021,7 +2131,7 @@ fun StaffOperationsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
-                                        Text(g.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(g.name, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         Text(g.address, color = Color(0xFF94A3B8), fontSize = 10.sp, maxLines = 1)
                                         Text(
                                             "📍 Lat: ${g.latitude}, Lng: ${g.longitude} • Geofence: ${g.radiusMeters}m",
@@ -2044,13 +2154,13 @@ fun StaffOperationsScreen(
                             showPickupPicker = false
                             showAddGodownModal = true
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFF6FF)),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.AddLocation, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.AddLocation, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("+ Add New Godown with Coordinates", fontSize = 11.sp, color = Color(0xFF10B981))
+                        Text("+ Add New Godown with Coordinates", fontSize = 11.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
                     }
                 }
             },
@@ -2060,9 +2170,9 @@ fun StaffOperationsScreen(
                     Text("Cancel", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
@@ -2110,15 +2220,16 @@ fun StaffOperationsScreen(
 
                     // Custom input option
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F2B48)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
                         shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.EditLocation, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Custom Customer Destination:", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Custom Customer Destination:", color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                             OutlinedTextField(
                                 value = customDeliveryInput,
@@ -2150,7 +2261,7 @@ fun StaffOperationsScreen(
                         val isSelected = !isCustomDeliveryMode && selectedDelivery == destName
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) Color(0xFF0C4A6E) else Color(0xFF0F172A)
+                                containerColor = if (isSelected) Color(0xFFEFF6FF) else Color.White
                             ),
                             shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
@@ -2162,7 +2273,7 @@ fun StaffOperationsScreen(
                                 }
                                 .border(
                                     width = if (isSelected) 1.5.dp else 1.dp,
-                                    color = if (isSelected) Color(0xFF38BDF8) else Color(0xFF334155),
+                                    color = if (isSelected) Color(0xFF1D4ED8) else Color(0xFFE2E8F0),
                                     shape = RoundedCornerShape(8.dp)
                                 )
                         ) {
@@ -2180,7 +2291,7 @@ fun StaffOperationsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
-                                        Text(destName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text(destName, color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                         Text(destDesc, color = Color(0xFF94A3B8), fontSize = 10.sp)
                                     }
                                 }
@@ -2244,125 +2355,250 @@ fun StaffOperationsScreen(
                     Text("Cancel", color = Color(0xFF94A3B8))
                 }
             },
-            containerColor = Color(0xFF1E293B),
-            titleContentColor = Color.White,
-            textContentColor = Color(0xFFCBD5E1)
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
         )
     }
 
     // ==========================================
-    // MAIN SCREEN CONTENT
+    // MAIN SCREEN CONTENT - Medium White & Blue Enterprise Theme
     // ==========================================
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A))
+            .background(Color(0xFFF8FAFC))
             .padding(16.dp)
     ) {
         // TOP ENTERPRISE HEADER
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = Color(0xFF10B981),
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.size(10.dp)
-                    ) {}
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "FLEETOPS ENTERPRISE",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
-                }
-                Text(
-                    text = if (userRole == "ADMIN") "Edwin" else userName,
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-
-            IconButton(
-                onClick = { showLogoutDialog = true },
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = Color(0xFF1E293B)
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ExitToApp,
-                    contentDescription = "Log Out",
-                    tint = Color(0xFFF87171)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Role Badge with Actions
         Surface(
-            color = roleColor.copy(alpha = 0.15f),
-            shape = RoundedCornerShape(8.dp),
+            color = Color.White,
+            shape = RoundedCornerShape(12.dp),
+            shadowElevation = 2.dp,
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = roleLabel,
-                        color = roleColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = userEmail,
-                        color = Color(0xFF94A3B8),
-                        fontSize = 10.sp
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFFEFF6FF),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(38.dp),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (userRole == "ADMIN") Icons.Default.Shield else Icons.Default.Badge,
+                                contentDescription = null,
+                                tint = Color(0xFF1D4ED8),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "FLEETOPS ENTERPRISE",
+                            color = Color(0xFF1D4ED8),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = if (userRole == "ADMIN") "Edwin" else userName,
+                            color = Color(0xFF0F172A),
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = roleLabel,
+                            color = Color(0xFF64748B),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
-                // Header Action: Keep Alive Tracking
-                Button(
-                    onClick = { showLiveFleetModal = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(6.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Icon(Icons.Default.Radio, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Keep-Alive Radar", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                // Top Right Action: 3-Dots Overflow Menu
+                Box {
+                    IconButton(
+                        onClick = { showOverflowMenu = true },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(Color(0xFFF1F5F9), shape = RoundedCornerShape(8.dp))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Actions Menu",
+                            tint = Color(0xFF1E293B),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showOverflowMenu,
+                        onDismissRequest = { showOverflowMenu = false },
+                        modifier = Modifier
+                            .background(Color.White)
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(8.dp))
+                    ) {
+                        if (userRole == "ADMIN") {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Badge, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Fleet Drivers (${driversRadarList.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showDriversModal = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Vehicles (${vehiclesList.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showVehiclesModal = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.People, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Staff (GM & Sales) (${staffList.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showStaffModal = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Godowns (${godownsList.size})", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showGodownsModal = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Equalizer, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Daily Run Analytics", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showDailyMetricsModal = true
+                                }
+                            )
+                            Divider(color = Color(0xFFE2E8F0), modifier = Modifier.padding(vertical = 4.dp))
+                        }
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Radio, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Keep-Alive Live Radar", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                }
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                showLiveFleetModal = true
+                            }
+                        )
+
+                        if (userRole == "SALES_STAFF" || userRole == "GODOWN_MANAGER") {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Godowns Map", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    }
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showGodownsModal = true
+                                }
+                            )
+                        }
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Order History", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                }
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                currentFeedTab = "HISTORY"
+                            }
+                        )
+
+                        Divider(color = Color(0xFFE2E8F0), modifier = Modifier.padding(vertical = 4.dp))
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.ExitToApp, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Log Out", color = Color(0xFFDC2626), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                showLogoutDialog = true
+                            }
+                        )
+                    }
                 }
             }
         }
 
-        // Success banner
+        // Notification / Success Banner
         if (successMessage != null) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Surface(
-                color = Color(0xFF065F46),
+                color = Color(0xFFDCFCE7),
                 shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Color(0xFFBBF7D0)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(successMessage!!, color = Color.White, fontSize = 11.sp, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { successMessage = null }, modifier = Modifier.size(16.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(successMessage!!, color = Color(0xFF166534), fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { successMessage = null }, modifier = Modifier.size(20.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color(0xFF166534), modifier = Modifier.size(14.dp))
                     }
                 }
             }
@@ -2370,16 +2606,17 @@ fun StaffOperationsScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // PRIMARY ACTION BUTTON: CREATE DELIVERY JOB
+        // PRIMARY ACTION BUTTON: CREATE DELIVERY JOB (Royal Blue)
         Button(
             onClick = { showAddJobModal = true },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF10B981)
+                containerColor = Color(0xFF1D4ED8)
             ),
-            shape = RoundedCornerShape(10.dp)
+            shape = RoundedCornerShape(10.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2387,406 +2624,575 @@ fun StaffOperationsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AddCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.AddCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("+ Create Delivery Job", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
-                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(16.dp))
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // ==========================================
-        // ROLE SPECIFIC OPERATIONAL WIDGETS
-        // ==========================================
-        when (userRole) {
-            "GODOWN_MANAGER" -> {
-                val pendingJobsCount = jobsList.count { it.status == "AWAITING_ASSIGNMENT" || it.status == "REJECTED" }
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (pendingJobsCount > 0) Color(0xFF451A03) else Color(0xFF1E293B)
-                    ),
+        // ROLE SPECIFIC OPERATIONAL BANNER (Godown Manager / Sales)
+        if (userRole == "GODOWN_MANAGER") {
+            val pendingJobsCount = jobsList.count { it.status == "AWAITING_ASSIGNMENT" || it.status == "REJECTED" }
+            if (pendingJobsCount > 0) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    color = Color(0xFFFEF3C7),
                     shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().border(
-                        1.dp,
-                        if (pendingJobsCount > 0) Color(0xFFF59E0B) else Color(0xFF334155),
-                        RoundedCornerShape(10.dp)
-                    )
+                    border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.NotificationImportant, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
+                        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.NotificationImportant, contentDescription = null, tint = Color(0xFFB45309), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
                                 Text(
                                     "Pending Driver Allocations: $pendingJobsCount",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
+                                    color = Color(0xFF92400E),
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
+                                Text(
+                                    "Select closest available driver on live radar",
+                                    color = Color(0xFFB45309),
+                                    fontSize = 10.sp
+                                )
                             }
-                            Text(
-                                "Admin/Sales created orders awaiting your closest driver assignment",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 10.sp
-                            )
                         }
-
-                        if (pendingJobsCount > 0) {
-                            Button(
-                                onClick = {
-                                    val target = jobsList.firstOrNull { it.status == "AWAITING_ASSIGNMENT" || it.status == "REJECTED" }
-                                    if (target != null) jobToAllocateDriver = target
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
-                                shape = RoundedCornerShape(6.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("Assign Now", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF451A03))
-                            }
+                        Button(
+                            onClick = {
+                                val target = jobsList.firstOrNull { it.status == "AWAITING_ASSIGNMENT" || it.status == "REJECTED" }
+                                if (target != null) jobToAllocateDriver = target
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text("Assign Now", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
             }
+        }
 
-            "SALES_STAFF" -> {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // NAVIGATION TABS: Active Orders vs Order History
+        val activeJobs = jobsList.filter { it.status != "COMPLETED" && it.status != "DELIVERED" }
+        val completedJobsAll = jobsList.filter { it.status == "COMPLETED" || it.status == "DELIVERED" }
+
+        Surface(
+            color = Color(0xFFF1F5F9),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(3.dp)
+            ) {
+                // TAB 1: ACTIVE ORDERS
+                Surface(
+                    color = if (currentFeedTab == "ACTIVE") Color(0xFF1D4ED8) else Color.Transparent,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { currentFeedTab = "ACTIVE" }
                 ) {
                     Row(
-                        modifier = Modifier.padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.ShoppingCart, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Sales Desk & Live Fleet Radar", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Text("Real-time visibility into driver locations & keep-alive", color = Color(0xFF94A3B8), fontSize = 10.sp)
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Button(
-                                onClick = { showGodownsModal = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                                shape = RoundedCornerShape(6.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(12.dp))
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text("Godowns", fontSize = 10.sp, color = Color(0xFFF59E0B))
-                            }
-                            Button(
-                                onClick = { showLiveFleetModal = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-                                shape = RoundedCornerShape(6.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text("View Fleet", fontSize = 10.sp)
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.LocalShipping,
+                            contentDescription = null,
+                            tint = if (currentFeedTab == "ACTIVE") Color.White else Color(0xFF64748B),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Active Orders (${activeJobs.size})",
+                            color = if (currentFeedTab == "ACTIVE") Color.White else Color(0xFF475569),
+                            fontSize = 12.sp,
+                            fontWeight = if (currentFeedTab == "ACTIVE") FontWeight.Bold else FontWeight.Medium
+                        )
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
-            }
 
-            "ADMIN" -> {
-                // ADMIN CONTROL ROW: Drivers, Vehicles, Staff, Godowns, and Daily Run Analytics
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // TAB 2: ORDER HISTORY
+                Surface(
+                    color = if (currentFeedTab == "HISTORY") Color(0xFF1D4ED8) else Color.Transparent,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { currentFeedTab = "HISTORY" }
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                            modifier = Modifier.weight(1f).clickable { showDriversModal = true },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Badge, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(13.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Drivers", color = Color(0xFF94A3B8), fontSize = 9.sp)
-                                }
-                                Text("${driversRadarList.size}", color = Color(0xFF34D399), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                Text("Manage", color = Color(0xFF64748B), fontSize = 8.sp)
-                            }
-                        }
-
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                            modifier = Modifier.weight(1f).clickable { showVehiclesModal = true },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(13.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Vehicles", color = Color(0xFF94A3B8), fontSize = 9.sp)
-                                }
-                                Text("${vehiclesList.size}", color = Color(0xFF38BDF8), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                Text("Manage", color = Color(0xFF64748B), fontSize = 8.sp)
-                            }
-                        }
-
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                            modifier = Modifier.weight(1f).clickable { showStaffModal = true },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.People, contentDescription = null, tint = Color(0xFFA78BFA), modifier = Modifier.size(13.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Staff", color = Color(0xFF94A3B8), fontSize = 9.sp)
-                                }
-                                Text("${staffList.size}", color = Color(0xFFA78BFA), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                Text("GM/Sales", color = Color(0xFF64748B), fontSize = 8.sp)
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                            modifier = Modifier.weight(1f).clickable { showGodownsModal = true },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(13.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Godowns", color = Color(0xFF94A3B8), fontSize = 9.sp)
-                                }
-                                Text("${godownsList.size}", color = Color(0xFFF59E0B), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                                Text("GPS Map", color = Color(0xFF64748B), fontSize = 8.sp)
-                            }
-                        }
-
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                            modifier = Modifier.weight(1.2f).clickable { showDailyMetricsModal = true },
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Equalizer, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("Daily Run Analytics", color = Color(0xFF94A3B8), fontSize = 9.sp)
-                                }
-                                Text("Analytics", color = Color(0xFF10B981), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                                Text("KM & Dwell Time", color = Color(0xFF64748B), fontSize = 8.sp)
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null,
+                            tint = if (currentFeedTab == "HISTORY") Color.White else Color(0xFF64748B),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Order History (${completedJobsAll.size})",
+                            color = if (currentFeedTab == "HISTORY") Color.White else Color(0xFF475569),
+                            fontSize = 12.sp,
+                            fontWeight = if (currentFeedTab == "HISTORY") FontWeight.Bold else FontWeight.Medium
+                        )
                     }
                 }
-                Spacer(modifier = Modifier.height(10.dp))
             }
         }
 
-        // ACTIVE FLEET JOBS FEED HEADER
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "ACTIVE DISPATCH JOBS",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF64748B),
-                letterSpacing = 1.sp
-            )
-            Text(
-                text = "${jobsList.size} Jobs",
-                fontSize = 11.sp,
-                color = Color(0xFF94A3B8)
-            )
-        }
+        Spacer(modifier = Modifier.height(10.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
+        // FEED BODY: ACTIVE ORDERS OR ORDER HISTORY
+        if (currentFeedTab == "ACTIVE") {
+            // ==========================================
+            // ACTIVE ORDERS FEED (Only Active Orders)
+            // ==========================================
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "ACTIVE DISPATCH JOBS",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64748B),
+                    letterSpacing = 0.8.sp
+                )
+                Text(
+                    text = "${activeJobs.size} Active",
+                    fontSize = 11.sp,
+                    color = Color(0xFF1D4ED8),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
-        // JOBS LIST FEED
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(jobsList) { job ->
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (activeJobs.isEmpty()) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth().border(
-                        width = 1.dp,
-                        color = when (job.status) {
-                            "AWAITING_ASSIGNMENT" -> Color(0xFFF59E0B)
-                            "REJECTED" -> Color(0xFFEF4444)
-                            "IN PROGRESS" -> Color(0xFF3B82F6)
-                            "COMPLETED" -> Color(0xFF10B981)
-                            else -> Color(0xFF334155)
-                        },
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp)
+                            .padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = job.jobNumber,
-                                color = Color.White,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 14.sp
-                            )
-                            val statusBg = when (job.status) {
-                                "AWAITING_ASSIGNMENT" -> Color(0xFFF59E0B).copy(alpha = 0.2f)
-                                "REJECTED" -> Color(0xFFEF4444).copy(alpha = 0.2f)
-                                "IN PROGRESS" -> Color(0xFF3B82F6).copy(alpha = 0.2f)
-                                "COMPLETED" -> Color(0xFF10B981).copy(alpha = 0.2f)
-                                else -> Color(0xFF0284C7).copy(alpha = 0.2f)
-                            }
-                            val statusText = when (job.status) {
-                                "AWAITING_ASSIGNMENT" -> Color(0xFFFBBF24)
-                                "REJECTED" -> Color(0xFFF87171)
-                                "IN PROGRESS" -> Color(0xFF60A5FA)
-                                "COMPLETED" -> Color(0xFF34D399)
-                                else -> Color(0xFF38BDF8)
-                            }
-                            Surface(
-                                color = statusBg,
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = if (job.status == "AWAITING_ASSIGNMENT") "AWAITING DRIVER" else job.status,
-                                    color = statusText,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(36.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text("All Dispatches Fulfilled", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF0F172A))
+                        Text("There are no active pending orders at this moment.", fontSize = 11.sp, color = Color(0xFF64748B))
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(activeJobs) { job ->
+                        val cardBorderColor = when (job.status) {
+                            "AWAITING_ASSIGNMENT" -> Color(0xFFFDE68A)
+                            "REJECTED" -> Color(0xFFFECACA)
+                            "IN PROGRESS" -> Color(0xFFBFDBFE)
+                            else -> Color(0xFFE2E8F0)
                         }
 
-                        // Rejection Remark Alert Banner
-                        if (job.status == "REJECTED" && !job.rejectionReason.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Surface(
-                                color = Color(0xFF450A0A),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.fillMaxWidth()
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, cardBorderColor, RoundedCornerShape(12.dp)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp)
                             ) {
-                                Row(modifier = Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
-                                        "Driver Remark: ${job.rejectionReason}",
-                                        color = Color(0xFFFCA5A5),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        text = job.jobNumber,
+                                        color = Color(0xFF0F172A),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
                                     )
+                                    val (statusBg, statusText, statusBorder) = when (job.status) {
+                                        "AWAITING_ASSIGNMENT" -> Triple(Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+                                        "REJECTED" -> Triple(Color(0xFFFEE2E2), Color(0xFFB91C1C), Color(0xFFFECACA))
+                                        "IN PROGRESS" -> Triple(Color(0xFFEFF6FF), Color(0xFF1D4ED8), Color(0xFFBFDBFE))
+                                        else -> Triple(Color(0xFFF1F5F9), Color(0xFF475569), Color(0xFFE2E8F0))
+                                    }
+                                    Surface(
+                                        color = statusBg,
+                                        shape = RoundedCornerShape(6.dp),
+                                        border = BorderStroke(1.dp, statusBorder)
+                                    ) {
+                                        Text(
+                                            text = if (job.status == "AWAITING_ASSIGNMENT") "AWAITING DRIVER" else job.status,
+                                            color = statusText,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                // Rejection Alert
+                                if (job.status == "REJECTED" && !job.rejectionReason.isNullOrBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Surface(
+                                        color = Color(0xFFFEF2F2),
+                                        shape = RoundedCornerShape(6.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFFECACA)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                "Driver Remark: ${job.rejectionReason}",
+                                                color = Color(0xFF991B1B),
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = "From: ${job.pickupName}", color = Color(0xFF334155), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                }
+
+                                Spacer(modifier = Modifier.height(3.dp))
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = "To: ${job.deliveryName}", color = Color(0xFF334155), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = "📦 ${job.cargoDetails}", color = Color(0xFF64748B), fontSize = 10.sp)
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Divider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Driver: ${job.assignedDriver}",
+                                            color = if (job.assignedDriver == "Unassigned") Color(0xFFB45309) else Color(0xFF334155),
+                                            fontSize = 11.sp,
+                                            fontWeight = if (job.assignedDriver == "Unassigned") FontWeight.Bold else FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = job.timeAgo,
+                                            color = Color(0xFF64748B),
+                                            fontSize = 9.sp
+                                        )
+                                    }
+
+                                    // Action buttons
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        if (job.status == "AWAITING_ASSIGNMENT" || job.status == "REJECTED") {
+                                            Button(
+                                                onClick = { jobToAllocateDriver = job },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = if (job.status == "REJECTED") Color(0xFFDC2626) else Color(0xFF1D4ED8)
+                                                ),
+                                                shape = RoundedCornerShape(6.dp),
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                            ) {
+                                                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    if (job.status == "REJECTED") "Re-Assign Driver" else "Assign Driver",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        } else if (job.status == "OFFERED") {
+                                            TextButton(
+                                                onClick = {
+                                                    jobsList = jobsList.map { j ->
+                                                        if (j.id == job.id) j.copy(status = "IN PROGRESS", timeAgo = "Started just now") else j
+                                                    }
+                                                    FleetNotificationManager.showOperationalAlert(
+                                                        context,
+                                                        "JOB_ACCEPTED",
+                                                        "✅ Job ${job.jobNumber} Accepted!",
+                                                        "Driver accepted offer. Route navigation active."
+                                                    )
+                                                    successMessage = "Driver accepted ${job.jobNumber}. Active on route."
+                                                },
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text("Accept", fontSize = 10.sp, color = Color(0xFF15803D), fontWeight = FontWeight.Bold)
+                                            }
+
+                                            TextButton(
+                                                onClick = { jobToRejectWithRemark = job },
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text("Reject", fontSize = 10.sp, color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "From: ${job.pickupName}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
-                        }
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(13.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(text = "To: ${job.deliveryName}", color = Color(0xFFCBD5E1), fontSize = 11.sp)
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Divider(color = Color(0xFF334155), thickness = 0.5.dp)
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
+                    }
+                }
+            }
+        } else {
+            // ==========================================
+            // ORDER HISTORY FEED (Completed Orders with Driver & Date Filtering)
+            // ==========================================
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Driver Filter Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Driver:",
+                        color = Color(0xFF475569),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(48.dp)
+                    )
+                    val driversFilterOptions = listOf("All Drivers", "Kiran Kumar", "Ramesh Babu", "Sunil V", "Anand Rao")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(driversFilterOptions) { driverOption ->
+                            val isSelected = selectedDriverFilter == driverOption
+                            Surface(
+                                color = if (isSelected) Color(0xFF1D4ED8) else Color.White,
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                                modifier = Modifier.clickable { selectedDriverFilter = driverOption }
+                            ) {
                                 Text(
-                                    text = "Driver: ${job.assignedDriver}",
-                                    color = if (job.assignedDriver == "Unassigned") Color(0xFFF59E0B) else Color(0xFF94A3B8),
+                                    text = driverOption,
+                                    color = if (isSelected) Color.White else Color(0xFF334155),
                                     fontSize = 11.sp,
-                                    fontWeight = if (job.assignedDriver == "Unassigned") FontWeight.Bold else FontWeight.Normal
-                                )
-                                Text(
-                                    text = job.timeAgo,
-                                    color = Color(0xFF64748B),
-                                    fontSize = 9.sp
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
                             }
+                        }
+                    }
+                }
 
-                            // ACTION BUTTONS BASED ON JOB STATE & USER ROLE
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                if (job.status == "AWAITING_ASSIGNMENT" || job.status == "REJECTED") {
-                                    Button(
-                                        onClick = { jobToAllocateDriver = job },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (job.status == "REJECTED") Color(0xFFEF4444) else Color(0xFFF59E0B)
-                                        ),
-                                        shape = RoundedCornerShape(6.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                // Date Filter Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Date:",
+                        color = Color(0xFF475569),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.width(48.dp)
+                    )
+                    val datesFilterOptions = listOf("All Dates", "Today", "Yesterday", "Oct 6, 2026", "Oct 5, 2026")
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(datesFilterOptions) { dateOption ->
+                            val isSelected = selectedDateFilter == dateOption
+                            Surface(
+                                color = if (isSelected) Color(0xFF1D4ED8) else Color.White,
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF1D4ED8) else Color(0xFFCBD5E1)),
+                                modifier = Modifier.clickable { selectedDateFilter = dateOption }
+                            ) {
+                                Text(
+                                    text = dateOption,
+                                    color = if (isSelected) Color.White else Color(0xFF334155),
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Filter Summary & Reset
+                val completedFiltered = completedJobsAll
+                    .filter { job ->
+                        if (selectedDriverFilter == "All Drivers") true
+                        else job.assignedDriver.contains(selectedDriverFilter)
+                    }
+                    .filter { job ->
+                        if (selectedDateFilter == "All Dates") true
+                        else job.deliveryDate == selectedDateFilter
+                    }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "ARCHIVED ORDERS (${completedFiltered.size} found)",
+                        color = Color(0xFF64748B),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
+                    )
+
+                    if (selectedDriverFilter != "All Drivers" || selectedDateFilter != "All Dates") {
+                        TextButton(
+                            onClick = {
+                                selectedDriverFilter = "All Drivers"
+                                selectedDateFilter = "All Dates"
+                            },
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text("Reset Filters", fontSize = 10.sp, color = Color(0xFF1D4ED8), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                if (completedFiltered.isEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No completed orders match selected filter criteria.", color = Color(0xFF64748B), fontSize = 12.sp)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(completedFiltered) { job ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp)),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(13.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            if (job.status == "REJECTED") "Re-Assign Driver" else "Assign Driver",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
+                                            text = job.jobNumber,
+                                            color = Color(0xFF0F172A),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp
                                         )
-                                    }
-                                } else if (job.status == "OFFERED") {
-                                    // Simulation controls for testing pairing flow
-                                    TextButton(
-                                        onClick = {
-                                            jobsList = jobsList.map { j ->
-                                                if (j.id == job.id) j.copy(status = "IN PROGRESS", timeAgo = "Started just now") else j
-                                            }
-                                            FleetNotificationManager.showOperationalAlert(
-                                                context,
-                                                "JOB_ACCEPTED",
-                                                "✅ Job ${job.jobNumber} Accepted!",
-                                                "Driver accepted offer with Tata Ace. Route navigation active."
+                                        Surface(
+                                            color = Color(0xFFDCFCE7),
+                                            shape = RoundedCornerShape(6.dp),
+                                            border = BorderStroke(1.dp, Color(0xFFBBF7D0))
+                                        ) {
+                                            Text(
+                                                text = "DELIVERED",
+                                                color = Color(0xFF15803D),
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
-                                            successMessage = "Driver accepted ${job.jobNumber}. Active on route."
-                                        },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text("Accept", fontSize = 10.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+                                        }
                                     }
 
-                                    TextButton(
-                                        onClick = { jobToRejectWithRemark = job },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = "🕒 Delivered: ${job.completedAt ?: job.timeAgo}",
+                                        color = Color(0xFF64748B),
+                                        fontSize = 11.sp
+                                    )
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Place, contentDescription = null, tint = Color(0xFF059669), modifier = Modifier.size(13.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("From: ${job.pickupName}", color = Color(0xFF334155), fontSize = 11.sp)
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Navigation, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(13.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("To: ${job.deliveryName}", color = Color(0xFF334155), fontSize = 11.sp)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text("🚛 Driver: ${job.assignedDriver} • 📦 ${job.cargoDetails}", color = Color(0xFF64748B), fontSize = 10.sp)
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Surface(
+                                        color = Color(0xFFEFF6FF),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = BorderStroke(1.dp, Color(0xFFBFDBFE))
                                     ) {
-                                        Text("Reject", fontSize = 10.sp, color = Color(0xFFF87171), fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = "✓ Proof of Delivery Verified & Customer Signature Captured",
+                                            color = Color(0xFF1D4ED8),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                        )
                                     }
                                 }
                             }

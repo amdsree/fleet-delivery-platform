@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -14,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.fleet.delivery.service.LocationTrackingService
 import com.fleet.delivery.ui.screens.*
 
@@ -89,62 +91,67 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        NavigationBar(
-                            containerColor = Color(0xFF1E293B),
-                            contentColor = Color.White
+                        Surface(
+                            shadowElevation = 8.dp,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
                         ) {
-                            NavigationBarItem(
-                                selected = currentScreen == "HOME",
-                                onClick = { currentScreen = "HOME" },
-                                icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-                                label = { Text("Home") },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xFF10B981),
-                                    selectedTextColor = Color(0xFF10B981),
-                                    unselectedIconColor = Color(0xFF94A3B8),
-                                    unselectedTextColor = Color(0xFF94A3B8),
-                                    indicatorColor = Color(0xFF0F172A)
+                            NavigationBar(
+                                containerColor = Color.White,
+                                contentColor = Color(0xFF0F172A)
+                            ) {
+                                NavigationBarItem(
+                                    selected = currentScreen == "HOME",
+                                    onClick = { currentScreen = "HOME" },
+                                    icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
+                                    label = { Text("Home") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color(0xFF1D4ED8),
+                                        selectedTextColor = Color(0xFF1D4ED8),
+                                        unselectedIconColor = Color(0xFF64748B),
+                                        unselectedTextColor = Color(0xFF64748B),
+                                        indicatorColor = Color(0xFFEFF6FF)
+                                    )
                                 )
-                            )
-                            NavigationBarItem(
-                                selected = currentScreen == "OFFER",
-                                onClick = { currentScreen = "OFFER" },
-                                icon = { Icon(Icons.Default.Notifications, contentDescription = "Offer") },
-                                label = { Text("Offer") },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xFF38BDF8),
-                                    selectedTextColor = Color(0xFF38BDF8),
-                                    unselectedIconColor = Color(0xFF94A3B8),
-                                    unselectedTextColor = Color(0xFF94A3B8),
-                                    indicatorColor = Color(0xFF0F172A)
+                                NavigationBarItem(
+                                    selected = currentScreen == "OFFER",
+                                    onClick = { currentScreen = "OFFER" },
+                                    icon = { Icon(Icons.Default.Notifications, contentDescription = "Offer") },
+                                    label = { Text("Offer") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color(0xFF1D4ED8),
+                                        selectedTextColor = Color(0xFF1D4ED8),
+                                        unselectedIconColor = Color(0xFF64748B),
+                                        unselectedTextColor = Color(0xFF64748B),
+                                        indicatorColor = Color(0xFFEFF6FF)
+                                    )
                                 )
-                            )
-                            NavigationBarItem(
-                                selected = currentScreen == "ACTIVE_JOB",
-                                onClick = { currentScreen = "ACTIVE_JOB" },
-                                icon = { Icon(Icons.Default.LocalShipping, contentDescription = "Active Trip") },
-                                label = { Text("Trip") },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xFFFBBF24),
-                                    selectedTextColor = Color(0xFFFBBF24),
-                                    unselectedIconColor = Color(0xFF94A3B8),
-                                    unselectedTextColor = Color(0xFF94A3B8),
-                                    indicatorColor = Color(0xFF0F172A)
+                                NavigationBarItem(
+                                    selected = currentScreen == "ACTIVE_JOB",
+                                    onClick = { currentScreen = "ACTIVE_JOB" },
+                                    icon = { Icon(Icons.Default.LocalShipping, contentDescription = "Active Trip") },
+                                    label = { Text("Trip") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color(0xFF1D4ED8),
+                                        selectedTextColor = Color(0xFF1D4ED8),
+                                        unselectedIconColor = Color(0xFF64748B),
+                                        unselectedTextColor = Color(0xFF64748B),
+                                        indicatorColor = Color(0xFFEFF6FF)
+                                    )
                                 )
-                            )
-                            NavigationBarItem(
-                                selected = currentScreen == "POD",
-                                onClick = { currentScreen = "POD" },
-                                icon = { Icon(Icons.Default.CheckCircle, contentDescription = "POD Signature") },
-                                label = { Text("POD") },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Color(0xFFA855F7),
-                                    selectedTextColor = Color(0xFFA855F7),
-                                    unselectedIconColor = Color(0xFF94A3B8),
-                                    unselectedTextColor = Color(0xFF94A3B8),
-                                    indicatorColor = Color(0xFF0F172A)
+                                NavigationBarItem(
+                                    selected = currentScreen == "POD",
+                                    onClick = { currentScreen = "POD" },
+                                    icon = { Icon(Icons.Default.CheckCircle, contentDescription = "POD Signature") },
+                                    label = { Text("POD") },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color(0xFF1D4ED8),
+                                        selectedTextColor = Color(0xFF1D4ED8),
+                                        unselectedIconColor = Color(0xFF64748B),
+                                        unselectedTextColor = Color(0xFF64748B),
+                                        indicatorColor = Color(0xFFEFF6FF)
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 ) { innerPadding ->

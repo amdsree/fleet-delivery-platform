@@ -1,6 +1,8 @@
 package com.fleet.delivery.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -95,74 +97,86 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A))
+            .background(Color(0xFFF8FAFC))
             .verticalScroll(scrollState)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // App Branding
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+        // App Branding - Enterprise Blue
+        Surface(
+            color = Color(0xFFEFF6FF),
             shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.size(72.dp)
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+            modifier = Modifier.size(76.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.LocalShipping,
                     contentDescription = "Fleet App",
-                    tint = Color(0xFF10B981),
-                    modifier = Modifier.size(40.dp)
+                    tint = Color(0xFF1D4ED8),
+                    modifier = Modifier.size(42.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = "FleetOps Logistics",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color(0xFF0F172A)
         )
         Text(
-            text = "Admin • Godown Manager • Sales Staff • Driver",
+            text = "Enterprise Dispatch & Fleet Management",
             fontSize = 12.sp,
-            color = Color(0xFF94A3B8)
+            color = Color(0xFF64748B)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // Login Card
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(22.dp)
             ) {
-                Text(
-                    text = "ORGANIZATION SIGN IN",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF10B981),
-                    letterSpacing = 1.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFF1D4ED8),
+                        shape = RoundedCornerShape(2.dp),
+                        modifier = Modifier.size(width = 4.dp, height = 16.dp)
+                    ) {}
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "ORGANIZATION SIGN IN",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1D4ED8),
+                        letterSpacing = 1.sp
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Email / Phone Field
                 OutlinedTextField(
                     value = identifier,
                     onValueChange = { identifier = it },
-                    label = { Text("Email or Username", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    label = { Text("Email or Username", color = Color(0xFF64748B), fontSize = 12.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF64748B))
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF1D4ED8))
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -170,11 +184,11 @@ fun LoginScreen(
                         imeAction = ImeAction.Next
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF10B981),
-                        unfocusedBorderColor = Color(0xFF334155),
-                        cursorColor = Color(0xFF10B981)
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedBorderColor = Color(0xFF1D4ED8),
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        cursorColor = Color(0xFF1D4ED8)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -185,9 +199,9 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    label = { Text("Password", color = Color(0xFF64748B), fontSize = 12.sp) },
                     leadingIcon = {
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF64748B))
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF1D4ED8))
                     },
                     trailingIcon = {
                         IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
@@ -206,11 +220,11 @@ fun LoginScreen(
                     ),
                     keyboardActions = KeyboardActions(onDone = { performLogin(identifier, password) }),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF10B981),
-                        unfocusedBorderColor = Color(0xFF334155),
-                        cursorColor = Color(0xFF10B981)
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedBorderColor = Color(0xFF1D4ED8),
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        cursorColor = Color(0xFF1D4ED8)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -218,13 +232,15 @@ fun LoginScreen(
                 if (errorMessage != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF7F1D1D)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEE2E2)),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFFFECACA), RoundedCornerShape(8.dp))
                     ) {
                         Text(
                             text = errorMessage!!,
-                            color = Color(0xFFFECACA),
+                            color = Color(0xFFB91C1C),
                             fontSize = 12.sp,
                             modifier = Modifier.padding(10.dp)
                         )
@@ -237,8 +253,9 @@ fun LoginScreen(
                 Button(
                     onClick = { performLogin(identifier, password) },
                     enabled = !isLoading,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8)),
+                    shape = RoundedCornerShape(10.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -260,15 +277,94 @@ fun LoginScreen(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Quick Login Profiles
+                Text(
+                    text = "SELECT OPERATIONAL PROFILE:",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64748B),
+                    letterSpacing = 0.5.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            identifier = "admin@fleetplatform.com"
+                            password = "Admin@12345"
+                            performLogin("admin@fleetplatform.com", "Admin@12345")
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1D4ED8))
+                    ) {
+                        Text("Edwin (Admin)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            identifier = "godown@fleetplatform.com"
+                            password = "Staff@12345"
+                            performLogin("godown@fleetplatform.com", "Staff@12345")
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155))
+                    ) {
+                        Text("Ramesh (Godown)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            identifier = "sales@fleetplatform.com"
+                            password = "Staff@12345"
+                            performLogin("sales@fleetplatform.com", "Staff@12345")
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155))
+                    ) {
+                        Text("Ananya (Sales)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            identifier = "driver@fleetplatform.com"
+                            password = "Driver@12345"
+                            performLogin("driver@fleetplatform.com", "Driver@12345")
+                        },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155))
+                    ) {
+                        Text("Kiran (Driver)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "© 2026 FleetOps Logistics. Enterprise Dispatch.",
+            text = "© 2026 FleetOps Logistics • Enterprise Dispatch",
             fontSize = 11.sp,
-            color = Color(0xFF475569)
+            color = Color(0xFF94A3B8)
         )
     }
 }
