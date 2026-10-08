@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: fleet-backend-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    plan: free
+    region: singapore
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: postgresql://postgres.gtedjxbyklzmavarruzo:Amdsree1987%40@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
+      - key: DB_TYPE
+        value: postgres
+      - key: DB_SSL
+        value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@fleetplatform.com
+      - key: ADMIN_PASSWORD
+        value: Admin@12345

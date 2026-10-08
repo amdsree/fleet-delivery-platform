@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: fleet_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-fleet_delivery_db}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d fleet_delivery_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: fleet_redis
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: fleet_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-fleet_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-fleet_minio_secret}
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fleet_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-fleet_delivery_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-fleet-management-jwt-super-secret-key-2026}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-fleet-refresh-super-secret-key-2026}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@fleetplatform.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@12345}
+    ports:
+      - '4000:4000'
+
+  admin-web:
+    build:
+      context: ./admin-web
+      dockerfile: Dockerfile
+    container_name: fleet_admin_web
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://backend:4000/api/v1
+    ports:
+      - '3000:3000'
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

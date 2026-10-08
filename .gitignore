@@ -1,0 +1,34 @@
+# Dependencies
+**/node_modules/
+node_modules/
+
+# Next.js build output
+**/.next/
+.next/
+
+# Backend build output
+**/dist/
+dist/
+coverage/
+
+# Android build output
+**/build/
+build/
+.gradle/
+**/.gradle/
+.kotlin/
+**/.kotlin/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs and system
+*.log
+*.sql.gz
+*.iml
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
