@@ -34,7 +34,7 @@ export default function ReportsPage() {
       const dailyData = dailyRes.data && dailyRes.data.length > 0 ? dailyRes.data : [
         {
           driver_id: 'd1',
-          driver_name: 'Kiran Kumar (Lead Driver 1)',
+          driver_name: 'Kiran Kumar',
           driver_phone: '+91 98450 11001',
           license_number: 'KA-04-2022-009182',
           duty_status: 'AVAILABLE',
@@ -56,7 +56,7 @@ export default function ReportsPage() {
         },
         {
           driver_id: 'd2',
-          driver_name: 'Ramesh Babu (Driver 2)',
+          driver_name: 'Ramesh Babu',
           driver_phone: '+91 98450 11002',
           license_number: 'KA-05-2021-008471',
           duty_status: 'BUSY',
@@ -78,7 +78,7 @@ export default function ReportsPage() {
         },
         {
           driver_id: 'd3',
-          driver_name: 'Sunil V (Driver 3)',
+          driver_name: 'Sunil V',
           driver_phone: '+91 98450 11003',
           license_number: 'KA-51-2023-001290',
           duty_status: 'AVAILABLE',

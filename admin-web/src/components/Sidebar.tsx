@@ -42,7 +42,7 @@ const allNavItems: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [userRole, setUserRole] = useState<string>('ADMIN');
-  const [userName, setUserName] = useState<string>('Admin User');
+  const [userName, setUserName] = useState<string>('Edwin');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -51,7 +51,11 @@ export default function Sidebar() {
         try {
           const parsed = JSON.parse(stored);
           if (parsed.role) setUserRole(parsed.role);
-          if (parsed.name) setUserName(parsed.name);
+          if (parsed.role === 'ADMIN') {
+            setUserName('Edwin');
+          } else if (parsed.name) {
+            setUserName(parsed.name);
+          }
         } catch {}
       }
     }

@@ -136,7 +136,7 @@ export async function runSeed(dataSource: DataSource) {
   let adminUser = await userRepo.findOne({ where: { email: adminEmail } });
   if (!adminUser) {
     adminUser = userRepo.create({
-      name: 'System SuperAdmin',
+      name: 'Edwin',
       email: adminEmail,
       phone: '+919876543210',
       password_hash: defaultPassword,
@@ -152,7 +152,7 @@ export async function runSeed(dataSource: DataSource) {
   let godownUser = await userRepo.findOne({ where: { email: 'godown@fleetplatform.com' } });
   if (!godownUser) {
     godownUser = userRepo.create({
-      name: 'Ramesh Nair (Godown Lead)',
+      name: 'Ramesh Nair',
       email: 'godown@fleetplatform.com',
       phone: '+919876543211',
       password_hash: staffPassword,
@@ -166,7 +166,7 @@ export async function runSeed(dataSource: DataSource) {
   let salesUser = await userRepo.findOne({ where: { email: 'sales@fleetplatform.com' } });
   if (!salesUser) {
     salesUser = userRepo.create({
-      name: 'Ananya Sharma (Sales Exec)',
+      name: 'Ananya Sharma',
       email: 'sales@fleetplatform.com',
       phone: '+919876543212',
       password_hash: staffPassword,

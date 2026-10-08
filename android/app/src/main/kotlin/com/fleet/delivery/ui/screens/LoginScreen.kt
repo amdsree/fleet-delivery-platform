@@ -56,7 +56,8 @@ fun LoginScreen(
                 val response = ApiClient.service.login(LoginRequest(identifier = id.trim(), password = pass))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
-                    onLoginSuccess(body.user.name, body.user.email, body.user.role, body.access_token)
+                    val effectiveName = if (body.user.role == "ADMIN") "Edwin" else body.user.name
+                    onLoginSuccess(effectiveName, body.user.email, body.user.role, body.access_token)
                 } else {
                     val errorBody = response.errorBody()?.string()
                     errorMessage = if (response.code() == 401) {
@@ -74,9 +75,9 @@ fun LoginScreen(
                     else -> "DRIVER"
                 }
                 val defaultName = when (role) {
-                    "ADMIN" -> "System Administrator"
-                    "GODOWN_MANAGER" -> "Godown Manager"
-                    "SALES_STAFF" -> "Sales Executive"
+                    "ADMIN" -> "Edwin"
+                    "GODOWN_MANAGER" -> "Ramesh Nair"
+                    "SALES_STAFF" -> "Ananya Sharma"
                     else -> "Kiran Kumar"
                 }
 

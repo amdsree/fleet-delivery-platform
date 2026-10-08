@@ -274,10 +274,10 @@ export default function Header() {
 
         <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
           <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-emerald-400">
-            {currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : 'AD'}
+            {currentUser?.role === 'ADMIN' ? 'ED' : (currentUser?.name ? currentUser.name.slice(0, 2).toUpperCase() : 'ED')}
           </div>
           <div className="text-left text-xs hidden sm:block">
-            <p className="font-semibold text-slate-200">{currentUser?.name || 'Admin User'}</p>
+            <p className="font-semibold text-slate-200">{currentUser?.role === 'ADMIN' ? 'Edwin' : (currentUser?.name || 'Edwin')}</p>
             <p className="text-slate-500 capitalize">{currentUser?.role?.replace('_', ' ') || 'Super Administrator'}</p>
           </div>
           <button

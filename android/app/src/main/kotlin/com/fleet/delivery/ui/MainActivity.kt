@@ -28,14 +28,15 @@ class MainActivity : ComponentActivity() {
             var isLoggedIn by remember { 
                 mutableStateOf(prefs.getBoolean("is_logged_in", true)) 
             }
-            var userName by remember { 
-                mutableStateOf(prefs.getString("user_name", "Super Administrator") ?: "Super Administrator") 
-            }
+            val initialRole = prefs.getString("user_role", "ADMIN") ?: "ADMIN"
+            val storedName = prefs.getString("user_name", if (initialRole == "ADMIN") "Edwin" else "Edwin")
+            val initialName = if (initialRole == "ADMIN") "Edwin" else (storedName ?: "Edwin")
+            var userName by remember { mutableStateOf(initialName) }
             var userEmail by remember { 
                 mutableStateOf(prefs.getString("user_email", "admin@fleetplatform.com") ?: "admin@fleetplatform.com") 
             }
             var userRole by remember { 
-                mutableStateOf(prefs.getString("user_role", "ADMIN") ?: "ADMIN") 
+                mutableStateOf(initialRole) 
             }
             var driverVehicle by remember { 
                 mutableStateOf(prefs.getString("driver_vehicle", "KA-04-AB-1234 (Tata Ace)") ?: "KA-04-AB-1234 (Tata Ace)") 
@@ -45,21 +46,23 @@ class MainActivity : ComponentActivity() {
             if (!isLoggedIn) {
                 LoginScreen(
                     onLoginSuccess = { name, email, role, token ->
-                        val vehicleName = when (name) {
-                            "Lead Driver 1", "Driver 1" -> "KA-04-AB-1234 (Tata Ace)"
-                            "Driver 2" -> "KA-05-CD-5678 (Eicher Pro)"
-                            "Driver 3" -> "KA-51-EF-9012 (Mahindra Bolero)"
+                        val effectiveName = if (role == "ADMIN") "Edwin" else name
+                        val vehicleName = when (effectiveName) {
+                            "Kiran Kumar" -> "KA-04-AB-1234 (Tata Ace)"
+                            "Ramesh Babu" -> "KA-05-CD-5678 (Eicher Pro)"
+                            "Sunil V" -> "KA-51-EF-9012 (Mahindra Bolero)"
+                            "Anand Rao" -> "KA-03-GH-3456 (Piaggio Ape Electric)"
                             else -> "KA-04-AB-1234 (Tata Ace)"
                         }
                         prefs.edit()
                             .putBoolean("is_logged_in", true)
-                            .putString("user_name", name)
+                            .putString("user_name", effectiveName)
                             .putString("user_email", email)
                             .putString("user_role", role)
                             .putString("driver_vehicle", vehicleName)
                             .putString("auth_token", token)
                             .apply()
-                        userName = name
+                        userName = effectiveName
                         userEmail = email
                         userRole = role
                         driverVehicle = vehicleName
