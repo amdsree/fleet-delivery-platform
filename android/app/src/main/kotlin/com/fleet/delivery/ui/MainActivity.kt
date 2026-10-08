@@ -28,8 +28,14 @@ class MainActivity : ComponentActivity() {
             var isLoggedIn by remember { 
                 mutableStateOf(prefs.getBoolean("is_logged_in", true)) 
             }
-            var driverName by remember { 
-                mutableStateOf(prefs.getString("driver_name", "Kiran Kumar") ?: "Kiran Kumar") 
+            var userName by remember { 
+                mutableStateOf(prefs.getString("user_name", "Super Administrator") ?: "Super Administrator") 
+            }
+            var userEmail by remember { 
+                mutableStateOf(prefs.getString("user_email", "admin@fleetplatform.com") ?: "admin@fleetplatform.com") 
+            }
+            var userRole by remember { 
+                mutableStateOf(prefs.getString("user_role", "ADMIN") ?: "ADMIN") 
             }
             var driverVehicle by remember { 
                 mutableStateOf(prefs.getString("driver_vehicle", "KA-04-AB-1234 (Tata Ace)") ?: "KA-04-AB-1234 (Tata Ace)") 
@@ -38,27 +44,42 @@ class MainActivity : ComponentActivity() {
 
             if (!isLoggedIn) {
                 LoginScreen(
-                    onLoginSuccess = { name, email, token ->
+                    onLoginSuccess = { name, email, role, token ->
                         val vehicleName = when (name) {
-                            "Driver 1" -> "KA-04-AB-1234 (Tata Ace)"
+                            "Lead Driver 1", "Driver 1" -> "KA-04-AB-1234 (Tata Ace)"
                             "Driver 2" -> "KA-05-CD-5678 (Eicher Pro)"
                             "Driver 3" -> "KA-51-EF-9012 (Mahindra Bolero)"
                             else -> "KA-04-AB-1234 (Tata Ace)"
                         }
                         prefs.edit()
                             .putBoolean("is_logged_in", true)
-                            .putString("driver_name", name)
-                            .putString("driver_email", email)
+                            .putString("user_name", name)
+                            .putString("user_email", email)
+                            .putString("user_role", role)
                             .putString("driver_vehicle", vehicleName)
                             .putString("auth_token", token)
                             .apply()
-                        driverName = name
+                        userName = name
+                        userEmail = email
+                        userRole = role
                         driverVehicle = vehicleName
                         isLoggedIn = true
                         currentScreen = "HOME"
                     }
                 )
+            } else if (userRole == "ADMIN" || userRole == "GODOWN_MANAGER" || userRole == "SALES_STAFF") {
+                // STAFF & MANAGEMENT PORTAL (Admin, Godown Manager, Sales Staff)
+                StaffOperationsScreen(
+                    userName = userName,
+                    userRole = userRole,
+                    userEmail = userEmail,
+                    onLogoutClick = {
+                        prefs.edit().putBoolean("is_logged_in", false).apply()
+                        isLoggedIn = false
+                    }
+                )
             } else {
+                // DRIVER PORTAL
                 BackHandler(enabled = currentScreen != "HOME") {
                     currentScreen = "HOME"
                 }
@@ -128,7 +149,7 @@ class MainActivity : ComponentActivity() {
                         when (currentScreen) {
                             "HOME" -> {
                                 DriverHomeScreen(
-                                    driverName = driverName,
+                                    driverName = userName,
                                     vehicleNumber = driverVehicle,
                                     isVehicleMoving = false,
                                     onViewJobClick = { currentScreen = "ACTIVE_JOB" },

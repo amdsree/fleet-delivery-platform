@@ -29,10 +29,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (name: String, email: String, token: String) -> Unit
+    onLoginSuccess: (name: String, email: String, role: String, token: String) -> Unit
 ) {
-    var identifier by remember { mutableStateOf("driver1@fleetplatform.com") }
-    var password by remember { mutableStateOf("Driver@12345") }
+    var identifier by remember { mutableStateOf("admin@fleetplatform.com") }
+    var password by remember { mutableStateOf("Admin@12345") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -56,7 +56,7 @@ fun LoginScreen(
                 val response = ApiClient.service.login(LoginRequest(identifier = id.trim(), password = pass))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
-                    onLoginSuccess(body.user.name, body.user.email, body.access_token)
+                    onLoginSuccess(body.user.name, body.user.email, body.user.role, body.access_token)
                 } else {
                     val errorBody = response.errorBody()?.string()
                     errorMessage = if (response.code() == 401) {
@@ -66,11 +66,22 @@ fun LoginScreen(
                     }
                 }
             } catch (e: Exception) {
-                // Network failure or fallback
-                if (pass == "Driver@12345" && id.startsWith("driver")) {
-                    // Seamless offline/fallback login for field resilience
-                    val driverNum = id.replace(Regex("[^0-9]"), "").ifEmpty { "1" }
-                    onLoginSuccess("Driver $driverNum", id, "demo_offline_token_$driverNum")
+                // Determine role based on identifier for fallback resilience
+                val role = when {
+                    id.contains("admin") -> "ADMIN"
+                    id.contains("godown") -> "GODOWN_MANAGER"
+                    id.contains("sales") -> "SALES_STAFF"
+                    else -> "DRIVER"
+                }
+                val defaultName = when (role) {
+                    "ADMIN" -> "System Administrator"
+                    "GODOWN_MANAGER" -> "Godown Manager"
+                    "SALES_STAFF" -> "Sales Executive"
+                    else -> "Kiran Kumar"
+                }
+
+                if (pass.startsWith("Admin") || pass.startsWith("Staff") || pass.startsWith("Driver")) {
+                    onLoginSuccess(defaultName, id, role, "demo_token_${System.currentTimeMillis()}")
                 } else {
                     errorMessage = "Network error: ${e.localizedMessage ?: "Unable to connect to cloud backend"}"
                 }
@@ -89,39 +100,39 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // App Branding
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
             shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.size(80.dp)
+            modifier = Modifier.size(72.dp)
         ) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.LocalShipping,
                     contentDescription = "Fleet App",
                     tint = Color(0xFF10B981),
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(40.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Fleet Delivery",
-            fontSize = 28.sp,
+            text = "FleetOps Logistics",
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
         Text(
-            text = "Driver Logistics & Telemetry Portal",
-            fontSize = 13.sp,
+            text = "Admin • Godown Manager • Sales Staff • Driver",
+            fontSize = 12.sp,
             color = Color(0xFF94A3B8)
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Login Card
         Card(
@@ -135,20 +146,20 @@ fun LoginScreen(
                     .padding(20.dp)
             ) {
                 Text(
-                    text = "DRIVER LOGIN",
-                    fontSize = 12.sp,
+                    text = "ORGANIZATION SIGN IN",
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF10B981),
                     letterSpacing = 1.sp
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Email / Phone Field
                 OutlinedTextField(
                     value = identifier,
                     onValueChange = { identifier = it },
-                    label = { Text("Email or Phone Number", color = Color(0xFF94A3B8)) },
+                    label = { Text("Email or Username", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                     leadingIcon = {
                         Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF64748B))
                     },
@@ -167,13 +178,13 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Password Field
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password", color = Color(0xFF94A3B8)) },
+                    label = { Text("Password", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                     leadingIcon = {
                         Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF64748B))
                     },
@@ -219,7 +230,7 @@ fun LoginScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Submit Button
                 Button(
@@ -229,20 +240,20 @@ fun LoginScreen(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .height(48.dp)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
                             color = Color.White,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Icon(Icons.Default.Login, contentDescription = null)
+                        Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Log In to Dispatch",
-                            fontSize = 15.sp,
+                            text = "Sign In to Portal",
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -251,22 +262,70 @@ fun LoginScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // Quick Preset Test Buttons for Driver Roster
+        // Role Presets Selection
         Text(
-            text = "QUICK TEST DRIVER ACCOUNTS",
+            text = "SELECT OPERATIONAL ROLE",
             color = Color(0xFF64748B),
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 1.sp
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
+        // Management Roles (Admin, Godown Manager, Sales Staff)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Button(
+                onClick = {
+                    identifier = "admin@fleetplatform.com"
+                    password = "Admin@12345"
+                    performLogin("admin@fleetplatform.com", "Admin@12345")
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("SuperAdmin", fontSize = 11.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
+            }
+
+            Button(
+                onClick = {
+                    identifier = "godown@fleetplatform.com"
+                    password = "Staff@12345"
+                    performLogin("godown@fleetplatform.com", "Staff@12345")
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Godown Mgr", fontSize = 11.sp, color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold)
+            }
+
+            Button(
+                onClick = {
+                    identifier = "sales@fleetplatform.com"
+                    password = "Staff@12345"
+                    performLogin("sales@fleetplatform.com", "Staff@12345")
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Sales Staff", fontSize = 11.sp, color = Color(0xFF38BDF8), fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Driver Accounts
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Button(
                 onClick = {
@@ -278,7 +337,7 @@ fun LoginScreen(
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Driver 1", fontSize = 12.sp, color = Color(0xFF38BDF8))
+                Text("Lead Driver 1", fontSize = 11.sp, color = Color(0xFFA78BFA))
             }
 
             Button(
@@ -291,28 +350,15 @@ fun LoginScreen(
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Driver 2", fontSize = 12.sp, color = Color(0xFF38BDF8))
-            }
-
-            Button(
-                onClick = {
-                    identifier = "driver3@fleetplatform.com"
-                    password = "Driver@12345"
-                    performLogin("driver3@fleetplatform.com", "Driver@12345")
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Driver 3", fontSize = 12.sp, color = Color(0xFF38BDF8))
+                Text("Driver 2", fontSize = 11.sp, color = Color(0xFFA78BFA))
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "Connected to Render Cloud API",
-            fontSize = 11.sp,
+            text = "Render Cloud API • Supabase Tokyo",
+            fontSize = 10.sp,
             color = Color(0xFF475569)
         )
     }

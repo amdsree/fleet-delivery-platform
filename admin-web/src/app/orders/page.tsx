@@ -149,7 +149,16 @@ export default function OrdersPage() {
                     </span>
                   </td>
                   <td className="py-3 px-4 font-mono text-emerald-400">v{o.current_version}</td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    {o.status === 'PENDING' && (
+                      <a
+                        href="/dispatch"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 text-[11px] font-semibold transition-colors mr-2"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Dispatch Job
+                      </a>
+                    )}
                     <button
                       onClick={() => inspectVersions(o.id)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-[11px] font-medium transition-colors"
