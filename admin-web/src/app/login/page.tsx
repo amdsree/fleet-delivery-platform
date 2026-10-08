@@ -7,8 +7,8 @@ import api from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [identifier, setIdentifier] = useState('admin@fleetplatform.com');
-  const [password, setPassword] = useState('Admin@12345');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -44,12 +44,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const setPreset = (email: string, pass: string) => {
-    setIdentifier(email);
-    setPassword(pass);
-    setErrorMessage(null);
   };
 
   return (
@@ -100,7 +94,7 @@ export default function LoginPage() {
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="admin@fleetplatform.com"
+                  placeholder="e.g., admin@fleetplatform.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   required
                 />
@@ -139,42 +133,11 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Quick Preset Buttons */}
-          <div className="pt-2 border-t border-slate-800 space-y-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-              Quick Test Credentials
-            </span>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setPreset('admin@fleetplatform.com', 'Admin@12345')}
-                className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-medium text-emerald-400 text-center transition-colors truncate"
-              >
-                SuperAdmin
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('godown@fleetplatform.com', 'Staff@12345')}
-                className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-medium text-amber-400 text-center transition-colors truncate"
-              >
-                Godown Mgr
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreset('sales@fleetplatform.com', 'Staff@12345')}
-                className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-medium text-sky-400 text-center transition-colors truncate"
-              >
-                Sales Staff
-              </button>
-            </div>
-          </div>
         </div>
 
-        {/* Footer info */}
+        {/* Clean Footer info without any provider details */}
         <div className="text-center text-xs text-slate-500 space-y-1">
-          <p>Zero-Cost Cloud Deployment • Render & Supabase</p>
-          <p>© 2026 FleetOps Logistics. All rights reserved.</p>
+          <p>© 2026 FleetOps Logistics. Enterprise Delivery Platform.</p>
         </div>
       </div>
     </div>

@@ -125,4 +125,26 @@ export class LocationsService {
 
     return saved;
   }
+
+  async delete(id: string, actorId: string, actorRole: string) {
+    const location = await this.findOne(id);
+    const locName = location.name;
+    try {
+      await this.locationRepo.delete(id);
+    } catch (err) {
+      location.active = false;
+      await this.locationRepo.save(location);
+    }
+
+    await this.auditService.log({
+      userId: actorId,
+      userRole: actorRole,
+      action: 'LOCATION_DELETED',
+      entityName: 'locations',
+      entityId: id,
+      oldValues: { name: locName, type: location.type },
+    });
+
+    return { success: true, message: `Location ${locName} deleted successfully` };
+  }
 }

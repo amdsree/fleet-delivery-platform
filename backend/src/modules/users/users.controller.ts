@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -77,5 +78,14 @@ export class UsersController {
     @CurrentUser() actor: User,
   ) {
     return this.usersService.updateStatus(id, dto, actor.id, actor.role?.name);
+  }
+
+  @Delete(':id')
+  @RequirePermissions(PermissionCode.USER_DISABLE)
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() actor: User,
+  ) {
+    return this.usersService.delete(id, actor.id, actor.role?.name);
   }
 }

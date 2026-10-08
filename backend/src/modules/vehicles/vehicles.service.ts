@@ -166,4 +166,27 @@ export class VehiclesService {
 
     return saved;
   }
+
+  async delete(id: string, actorId: string, actorRole: string) {
+    const vehicle = await this.findOne(id);
+    const regNo = vehicle.registration_number;
+    try {
+      await this.vehicleRepo.delete(id);
+    } catch (err) {
+      vehicle.status = VehicleStatus.INACTIVE;
+      vehicle.current_driver_id = null;
+      await this.vehicleRepo.save(vehicle);
+    }
+
+    await this.auditService.log({
+      userId: actorId,
+      userRole: actorRole,
+      action: 'VEHICLE_DELETED',
+      entityName: 'vehicles',
+      entityId: id,
+      oldValues: { registration_number: regNo },
+    });
+
+    return { success: true, message: `Vehicle ${regNo} deleted successfully` };
+  }
 }

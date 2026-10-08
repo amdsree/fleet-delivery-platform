@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from '../../database/entities/user.entity';
 import { Role } from '../../database/entities/role.entity';
+import { UserStatus } from '../../common/enums';
 import { CreateUserDto, UpdateUserDto, UpdateUserStatusDto } from './dto/user.dto';
 import { AuditService } from '../audit/audit.service';
 
@@ -142,5 +143,28 @@ export class UsersService {
 
   async getRoles() {
     return this.roleRepo.find({ relations: ['permissions'] });
+  }
+
+  async delete(id: string, actorId: string, actorRole: string) {
+    const user = await this.findOne(id);
+    const email = user.email;
+    try {
+      await this.userRepo.delete(id);
+    } catch (err) {
+      user.status = UserStatus.INACTIVE;
+      user.token_version += 1;
+      await this.userRepo.save(user);
+    }
+
+    await this.auditService.log({
+      userId: actorId,
+      userRole: actorRole,
+      action: 'USER_DELETED',
+      entityName: 'users',
+      entityId: id,
+      oldValues: { email, name: user.name },
+    });
+
+    return { success: true, message: `User ${email} deleted successfully` };
   }
 }

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
@@ -67,5 +68,14 @@ export class LocationsController {
     @CurrentUser() actor: User,
   ) {
     return this.locationsService.update(id, dto, actor.id, actor.role?.name);
+  }
+
+  @Delete(':id')
+  @RequirePermissions(PermissionCode.LOCATION_UPDATE)
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() actor: User,
+  ) {
+    return this.locationsService.delete(id, actor.id, actor.role?.name);
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Truck, Wrench, ShieldCheck, Plus, Gauge, X, CheckCircle } from 'lucide-react';
+import { Truck, Wrench, ShieldCheck, Plus, Gauge, X, CheckCircle, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function VehiclesPage() {
@@ -40,6 +40,16 @@ export default function VehiclesPage() {
       fetchVehicles();
     } catch (err: any) {
       alert(`Vehicle status error: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  const handleDeleteVehicle = async (vehicleId: string, regNo: string) => {
+    if (!window.confirm(`Are you sure you want to delete vehicle ${regNo}?`)) return;
+    try {
+      await api.delete(`/vehicles/${vehicleId}`);
+      fetchVehicles();
+    } catch (err: any) {
+      alert(`Failed to delete vehicle: ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -141,19 +151,29 @@ export default function VehiclesPage() {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-800">
-              <label className="block text-[10px] text-slate-500 mb-1">Update Status</label>
-              <select
-                value={v.status}
-                onChange={(e) => handleStatusChange(v.id, e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+            <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
+              <div className="flex-1">
+                <label className="block text-[10px] text-slate-500 mb-1">Update Status</label>
+                <select
+                  value={v.status}
+                  onChange={(e) => handleStatusChange(v.id, e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="AVAILABLE">AVAILABLE</option>
+                  <option value="ASSIGNED">ASSIGNED</option>
+                  <option value="IN_TRIP">IN_TRIP</option>
+                  <option value="MAINTENANCE">MAINTENANCE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDeleteVehicle(v.id, v.registration_number)}
+                title="Delete Vehicle"
+                className="mt-4 p-2 bg-red-950/60 hover:bg-red-900/80 border border-red-800/60 text-red-400 hover:text-red-200 rounded-lg transition-colors"
               >
-                <option value="AVAILABLE">AVAILABLE</option>
-                <option value="ASSIGNED">ASSIGNED</option>
-                <option value="IN_TRIP">IN_TRIP</option>
-                <option value="MAINTENANCE">MAINTENANCE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </div>
         ))}

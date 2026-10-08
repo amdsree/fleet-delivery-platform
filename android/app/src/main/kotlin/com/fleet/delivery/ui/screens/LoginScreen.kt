@@ -262,103 +262,11 @@ fun LoginScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Role Presets Selection
-        Text(
-            text = "SELECT OPERATIONAL ROLE",
-            color = Color(0xFF64748B),
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Management Roles (Admin, Godown Manager, Sales Staff)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Button(
-                onClick = {
-                    identifier = "admin@fleetplatform.com"
-                    password = "Admin@12345"
-                    performLogin("admin@fleetplatform.com", "Admin@12345")
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("SuperAdmin", fontSize = 11.sp, color = Color(0xFF10B981), fontWeight = FontWeight.Bold)
-            }
-
-            Button(
-                onClick = {
-                    identifier = "godown@fleetplatform.com"
-                    password = "Staff@12345"
-                    performLogin("godown@fleetplatform.com", "Staff@12345")
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Godown Mgr", fontSize = 11.sp, color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold)
-            }
-
-            Button(
-                onClick = {
-                    identifier = "sales@fleetplatform.com"
-                    password = "Staff@12345"
-                    performLogin("sales@fleetplatform.com", "Staff@12345")
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Sales Staff", fontSize = 11.sp, color = Color(0xFF38BDF8), fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Driver Accounts
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Button(
-                onClick = {
-                    identifier = "driver1@fleetplatform.com"
-                    password = "Driver@12345"
-                    performLogin("driver1@fleetplatform.com", "Driver@12345")
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Lead Driver 1", fontSize = 11.sp, color = Color(0xFFA78BFA))
-            }
-
-            Button(
-                onClick = {
-                    identifier = "driver2@fleetplatform.com"
-                    password = "Driver@12345"
-                    performLogin("driver2@fleetplatform.com", "Driver@12345")
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Driver 2", fontSize = 11.sp, color = Color(0xFFA78BFA))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Render Cloud API • Supabase Tokyo",
-            fontSize = 10.sp,
+            text = "© 2026 FleetOps Logistics. Enterprise Dispatch.",
+            fontSize = 11.sp,
             color = Color(0xFF475569)
         )
     }
