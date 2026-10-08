@@ -6,7 +6,7 @@ services:
     buildCommand: npm install --include=dev && npm run build
     startCommand: node dist/main.js
     plan: free
-    region: singapore
+    region: frankfurt
     envVars:
       - key: NODE_ENV
         value: production
