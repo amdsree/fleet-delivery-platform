@@ -97,6 +97,17 @@ data class UiDriverDailyMetric(
     val keepAliveStatus: String
 )
 
+fun calculateHaversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    val r = 6371.0 // Earth radius in km
+    val dLat = Math.toRadians(lat2 - lat1)
+    val dLon = Math.toRadians(lon2 - lon1)
+    val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return Math.round(r * c * 10.0) / 10.0
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffOperationsScreen(
@@ -135,7 +146,13 @@ fun StaffOperationsScreen(
 
     // Job Creation Form State
     var selectedPickup by remember { mutableStateOf("Peenya Central Godown") }
+    var selectedPickupLat by remember { mutableStateOf(13.0285) }
+    var selectedPickupLng by remember { mutableStateOf(77.5195) }
     var selectedDelivery by remember { mutableStateOf("Metro Hypermarket Malleshwaram") }
+    var showPickupPicker by remember { mutableStateOf(false) }
+    var showDeliveryPicker by remember { mutableStateOf(false) }
+    var customDeliveryInput by remember { mutableStateOf("") }
+    var isCustomDeliveryMode by remember { mutableStateOf(false) }
     var cargoDescription by remember { mutableStateOf("FMCG Consignment (40 Cases)") }
     var quantityText by remember { mutableStateOf("40") }
     var weightText by remember { mutableStateOf("250") }
@@ -508,8 +525,8 @@ fun StaffOperationsScreen(
                                     lastGpsRefreshTimestamp = "Refreshed at $nowTime (GPS Synced)"
                                     // Simulated location refresh with distance perturbation
                                     driversRadarList = driversRadarList.map { d ->
-                                        if (d.id == "d1") d.copy(distanceKm = 1.1, lastPingSecondsAgo = 1)
-                                        else if (d.id == "d2") d.copy(distanceKm = 3.7, lastPingSecondsAgo = 3)
+                                        if (d.id == "d1") d.copy(lastPingSecondsAgo = 1, latitude = d.latitude + 0.0003)
+                                        else if (d.id == "d2") d.copy(lastPingSecondsAgo = 2, latitude = d.latitude - 0.0002)
                                         else d
                                     }
                                 },
@@ -524,11 +541,24 @@ fun StaffOperationsScreen(
                         }
                     }
 
-                    Text("Active Fleet Drivers in Operational Radius:", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    // Dynamic driver distances from selected job pickup warehouse
+                    val driversWithCalculatedDist = remember(job, driversRadarList) {
+                        driversRadarList.map { drv ->
+                            val dist = calculateHaversineKm(job.pickupLat, job.pickupLng, drv.latitude, drv.longitude)
+                            drv.copy(distanceKm = dist)
+                        }
+                    }
+                    val closestAvailableDriverId = remember(driversWithCalculatedDist) {
+                        driversWithCalculatedDist
+                            .filter { !it.isBusy && it.dutyStatus == "AVAILABLE" }
+                            .minByOrNull { it.distanceKm }?.id
+                    }
+
+                    Text("Active Fleet Drivers in Operational Radius (${job.pickupName}):", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
 
                     // Driver Cards
-                    driversRadarList.forEach { drv ->
-                        val isClosest = drv.id == "d1"
+                    driversWithCalculatedDist.forEach { drv ->
+                        val isClosest = drv.id == closestAvailableDriverId
                         Card(
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isClosest) Color(0xFF064E3B) else if (drv.isBusy) Color(0xFF2E1065) else Color(0xFF1E293B)
@@ -1279,14 +1309,16 @@ fun StaffOperationsScreen(
                                             fontSize = 10.sp
                                         )
                                     }
-                                    IconButton(
-                                        onClick = {
-                                            itemToDeleteType = "Warehouse"
-                                            itemToDeleteId = g.id
-                                            itemToDeleteName = g.name
+                                    if (userRole == "ADMIN") {
+                                        IconButton(
+                                            onClick = {
+                                                itemToDeleteType = "Warehouse"
+                                                itemToDeleteId = g.id
+                                                itemToDeleteName = g.name
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
                                         }
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFEF4444), modifier = Modifier.size(20.dp))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -1505,31 +1537,76 @@ fun StaffOperationsScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Pickup Godown
-                    Text("Pickup Warehouse", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    // Pickup Godown (Interactive Selection)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Pickup Warehouse / Godown", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Tap to Select", color = Color(0xFF10B981), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showPickupPicker = true }
+                            .border(1.dp, Color(0xFF10B981).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                     ) {
-                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(selectedPickup, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(selectedPickup, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        "📍 Lat: $selectedPickupLat, Lng: $selectedPickupLng",
+                                        color = Color(0xFF10B981),
+                                        fontSize = 10.sp,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    )
+                                }
+                            }
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", tint = Color(0xFF10B981), modifier = Modifier.size(22.dp))
                         }
                     }
 
-                    // Delivery Customer
-                    Text("Delivery Destination", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    // Delivery Customer (Interactive Selection)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Delivery Destination", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Tap to Select / Custom", color = Color(0xFF38BDF8), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
                         shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDeliveryPicker = true }
+                            .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                     ) {
-                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(selectedDelivery, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(selectedDelivery, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(if (isCustomDeliveryMode) "Custom Destination" else "Standard Retail / Inter-hub Destination", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                }
+                            }
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", tint = Color(0xFF38BDF8), modifier = Modifier.size(22.dp))
                         }
                     }
 
@@ -1580,28 +1657,29 @@ fun StaffOperationsScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        val finalDelivery = if (isCustomDeliveryMode && customDeliveryInput.isNotBlank()) customDeliveryInput.trim() else selectedDelivery
                         val newJob = UiJobItem(
                             id = "job_${System.currentTimeMillis()}",
                             jobNumber = "JOB #${(10050..10099).random()}",
                             status = "AWAITING_ASSIGNMENT",
                             pickupName = selectedPickup,
-                            deliveryName = selectedDelivery,
+                            deliveryName = finalDelivery,
                             cargoDetails = "$cargoDescription ($weightText kg)",
                             assignedDriver = "Unassigned",
                             priority = priorityText,
                             timeAgo = "Just now",
                             rejectionReason = null,
-                            pickupLat = 13.0285,
-                            pickupLng = 77.5195
+                            pickupLat = selectedPickupLat,
+                            pickupLng = selectedPickupLng
                         )
                         jobsList = listOf(newJob) + jobsList
                         FleetNotificationManager.showOperationalAlert(
                             context,
                             "JOB_CREATED",
                             "New Delivery Job: ${newJob.jobNumber}",
-                            "Created by $roleLabel. Notification dispatched to Godown Manager for driver allocation."
+                            "Pickup from $selectedPickup for $finalDelivery. Dispatched to Godown Manager for driver allocation."
                         )
-                        successMessage = "Job ${newJob.jobNumber} created! Logged-in Godown Manager notified to select driver."
+                        successMessage = "Job ${newJob.jobNumber} created at $selectedPickup! Logged-in Godown Manager notified to select driver."
                         showAddJobModal = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
@@ -1611,6 +1689,302 @@ fun StaffOperationsScreen(
                     Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Create Job & Notify Godown Manager", fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
+
+    // ==========================================
+    // MODAL: SELECT PICKUP GODOWN / WAREHOUSE
+    // ==========================================
+    if (showPickupPicker) {
+        AlertDialog(
+            onDismissRequest = { showPickupPicker = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Select Pickup Godown", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    IconButton(onClick = { showPickupPicker = false }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF94A3B8))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Choose warehouse or godown where parcel / consignment will be collected:",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.sp
+                    )
+
+                    godownsList.forEach { g ->
+                        val isSelected = selectedPickup == g.name
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) Color(0xFF064E3B) else Color(0xFF0F172A)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedPickup = g.name
+                                    selectedPickupLat = g.latitude
+                                    selectedPickupLng = g.longitude
+                                    showPickupPicker = false
+                                }
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) Color(0xFF10B981) else Color(0xFF334155),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(
+                                        Icons.Default.Warehouse,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color(0xFF10B981) else Color(0xFFF59E0B),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(g.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(g.address, color = Color(0xFF94A3B8), fontSize = 10.sp, maxLines = 1)
+                                        Text(
+                                            "📍 Lat: ${g.latitude}, Lng: ${g.longitude} • Geofence: ${g.radiusMeters}m",
+                                            color = Color(0xFF10B981),
+                                            fontSize = 9.sp,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Button(
+                        onClick = {
+                            showPickupPicker = false
+                            showAddGodownModal = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.AddLocation, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("+ Add New Godown with Coordinates", fontSize = 11.sp, color = Color(0xFF10B981))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPickupPicker = false }) {
+                    Text("Cancel", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = Color(0xFF1E293B),
+            titleContentColor = Color.White,
+            textContentColor = Color(0xFFCBD5E1)
+        )
+    }
+
+    // ==========================================
+    // MODAL: SELECT DELIVERY DESTINATION
+    // ==========================================
+    val standardDestinations = listOf(
+        "Metro Hypermarket Malleshwaram" to "Retail Supercenter • Malleshwaram 8th Cross",
+        "Indiranagar Retail Outlet" to "Commercial Store • 100ft Road Indiranagar",
+        "Koramangala Logistics Bay" to "Distribution Center • 5th Block Koramangala",
+        "Jayanagar Commercial Hub" to "Commercial Bay • 4th Block Jayanagar",
+        "Whitefield Tech Park" to "Corporate Delivery • ITPL Main Road",
+        "Hebbal Retail Depot" to "Wholesale Center • Bellary Road Hebbal",
+        "Marathahalli Commercial Zone" to "Commercial Hub • Outer Ring Road"
+    )
+
+    if (showDeliveryPicker) {
+        AlertDialog(
+            onDismissRequest = { showDeliveryPicker = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Select Delivery Destination", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    IconButton(onClick = { showDeliveryPicker = false }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF94A3B8))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Choose standard commercial hub, inter-godown transfer, or custom address:",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 11.sp
+                    )
+
+                    // Custom input option
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F2B48)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.EditLocation, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Custom Customer Destination:", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedTextField(
+                                value = customDeliveryInput,
+                                onValueChange = { customDeliveryInput = it },
+                                placeholder = { Text("e.g. Phoenix Marketcity Store #4, Mahadevapura", fontSize = 11.sp) },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            if (customDeliveryInput.isNotBlank()) {
+                                Button(
+                                    onClick = {
+                                        selectedDelivery = customDeliveryInput.trim()
+                                        isCustomDeliveryMode = true
+                                        showDeliveryPicker = false
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                ) {
+                                    Text("Use Custom Destination", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    Text("Commercial & Retail Outlets:", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    standardDestinations.forEach { (destName, destDesc) ->
+                        val isSelected = !isCustomDeliveryMode && selectedDelivery == destName
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) Color(0xFF0C4A6E) else Color(0xFF0F172A)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedDelivery = destName
+                                    isCustomDeliveryMode = false
+                                    showDeliveryPicker = false
+                                }
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) Color(0xFF38BDF8) else Color(0xFF334155),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(
+                                        Icons.Default.Storefront,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(destName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text(destDesc, color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+
+                    Text("Inter-Godown Transfer (Other Warehouses):", color = Color(0xFFF59E0B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    godownsList.forEach { g ->
+                        val isSelected = !isCustomDeliveryMode && selectedDelivery == g.name
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) Color(0xFF78350F) else Color(0xFF0F172A)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedDelivery = g.name
+                                    isCustomDeliveryMode = false
+                                    showDeliveryPicker = false
+                                }
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) Color(0xFFF59E0B) else Color(0xFF334155),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(
+                                        Icons.Default.Warehouse,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color(0xFFF59E0B) else Color(0xFF94A3B8),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(g.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("${g.address} (Inter-hub)", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                                    }
+                                }
+                                if (isSelected) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = Color(0xFFF59E0B), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showDeliveryPicker = false }) {
+                    Text("Cancel", color = Color(0xFF94A3B8))
                 }
             },
             containerColor = Color(0xFF1E293B),
@@ -1843,13 +2217,25 @@ fun StaffOperationsScreen(
                             }
                             Text("Real-time visibility into driver locations & keep-alive", color = Color(0xFF94A3B8), fontSize = 10.sp)
                         }
-                        Button(
-                            onClick = { showLiveFleetModal = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Text("View Fleet", fontSize = 10.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Button(
+                                onClick = { showGodownsModal = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Warehouse, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(12.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("Godowns", fontSize = 10.sp, color = Color(0xFFF59E0B))
+                            }
+                            Button(
+                                onClick = { showLiveFleetModal = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("View Fleet", fontSize = 10.sp)
+                            }
                         }
                     }
                 }
