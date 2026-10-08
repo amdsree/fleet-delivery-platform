@@ -3,8 +3,8 @@ services:
     name: fleet-backend-api
     runtime: node
     rootDir: backend
-    buildCommand: npm install && npm run build
-    startCommand: npm run start:prod
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node dist/main.js
     plan: free
     region: singapore
     envVars:
