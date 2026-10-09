@@ -2,12 +2,15 @@ package com.fleet.delivery.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.res.painterResource
+import com.fleet.delivery.R
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -105,19 +108,23 @@ fun LoginScreen(
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
-        // App Branding - Enterprise Blue
+        // App Branding - Roditte Corporate
         Surface(
-            color = Color(0xFFEFF6FF),
-            shape = RoundedCornerShape(20.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
-            modifier = Modifier.size(76.dp)
+            color = Color.White,
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+            shadowElevation = 2.dp,
+            modifier = Modifier.padding(horizontal = 16.dp)
         ) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Default.LocalShipping,
-                    contentDescription = "Fleet App",
-                    tint = Color(0xFF1D4ED8),
-                    modifier = Modifier.size(42.dp)
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.roditte_logo),
+                    contentDescription = "Roditte",
+                    modifier = Modifier.height(38.dp)
                 )
             }
         }
@@ -125,13 +132,13 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
-            text = "FleetOps Logistics",
-            fontSize = 24.sp,
+            text = "Roditte Fleet Management",
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF0F172A)
         )
         Text(
-            text = "Enterprise Dispatch & Fleet Management",
+            text = "Enterprise Logistics & Dispatch Operations",
             fontSize = 12.sp,
             color = Color(0xFF64748B)
         )
@@ -362,7 +369,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "© 2026 FleetOps Logistics • Enterprise Dispatch",
+            text = "© 2026 Roditte Fleet Management • Enterprise Logistics",
             fontSize = 11.sp,
             color = Color(0xFF94A3B8)
         )

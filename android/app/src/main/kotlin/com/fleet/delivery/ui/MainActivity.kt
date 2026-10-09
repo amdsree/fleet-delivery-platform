@@ -17,6 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fleet.delivery.service.LocationTrackingService
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import com.fleet.delivery.util.SecurityIntegrityChecker
 import com.fleet.delivery.ui.screens.*
 
 class MainActivity : ComponentActivity() {
@@ -25,8 +31,37 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val prefs = getSharedPreferences("fleet_driver_prefs", Context.MODE_PRIVATE)
+        val integrityResult = SecurityIntegrityChecker.checkIntegrity(this)
 
         setContent {
+            var showTamperWarning by remember { mutableStateOf(!integrityResult.isSecure) }
+            if (showTamperWarning) {
+                AlertDialog(
+                    onDismissRequest = { showTamperWarning = false },
+                    title = { Text("⚠️ Security & Integrity Alert", fontWeight = FontWeight.Bold, color = Color(0xFFDC2626)) },
+                    text = {
+                        Column {
+                            Text("Application integrity verification failed:", fontSize = 12.sp, color = Color(0xFF334155))
+                            Spacer(modifier = Modifier.height(6.dp))
+                            integrityResult.violations.forEach { v ->
+                                Text("• $v", color = Color(0xFFDC2626), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("Fingerprint: ${integrityResult.currentFingerprint.take(24)}...", fontSize = 10.sp, color = Color(0xFF64748B))
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = { showTamperWarning = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+                        ) {
+                            Text("Acknowledge")
+                        }
+                    },
+                    containerColor = Color.White
+                )
+            }
+
             var isLoggedIn by remember { 
                 mutableStateOf(prefs.getBoolean("is_logged_in", true)) 
             }
@@ -169,6 +204,16 @@ class MainActivity : ComponentActivity() {
                                         } else {
                                             stopLocationService()
                                         }
+                                    },
+                                    onVehicleSelect = { selectedVehicle ->
+                                        driverVehicle = selectedVehicle
+                                        prefs.edit().putString("driver_vehicle", selectedVehicle).apply()
+                                        com.fleet.delivery.util.FleetNotificationManager.showOperationalAlert(
+                                            this@MainActivity,
+                                            "VEHICLE_SWITCHED",
+                                            "Trip Vehicle Selected",
+                                            "Active vehicle updated to $selectedVehicle. Ready for parcel dispatch."
+                                        )
                                     },
                                     onLogoutClick = {
                                         stopLocationService()

@@ -31,6 +31,15 @@ data class DriverHistoryItem(
     val podSigned: Boolean = true
 )
 
+data class DriverVehicleOption(
+    val regNumber: String,
+    val model: String,
+    val category: String,
+    val capacityKg: Int,
+    val description: String,
+    val parcelFit: String
+)
+
 @Composable
 fun DriverHomeScreen(
     driverName: String = "Kiran Kumar",
@@ -38,13 +47,60 @@ fun DriverHomeScreen(
     isVehicleMoving: Boolean = false,
     onViewJobClick: (String) -> Unit,
     onDutyToggle: (Boolean) -> Unit,
+    onVehicleSelect: (String) -> Unit = {},
     onLogoutClick: () -> Unit = {}
 ) {
     var isDutyActive by remember { mutableStateOf(true) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showVehicleSelectorDialog by remember { mutableStateOf(false) }
+    var selectedVehicle by remember(vehicleNumber) { mutableStateOf(vehicleNumber) }
+    var vehicleSwitchedMessage by remember { mutableStateOf<String?>(null) }
     var driverTab by remember { mutableStateOf("ACTIVE") } // "ACTIVE" or "HISTORY"
     var selectedDateFilter by remember { mutableStateOf("All Dates") }
     val scrollState = rememberScrollState()
+
+    val fleetVehicleOptions = listOf(
+        DriverVehicleOption(
+            regNumber = "KA-04-AB-1234",
+            model = "Tata Ace Gold",
+            category = "Medium Consignment",
+            capacityKg = 750,
+            description = "Standard Mini Truck • 750 kg Payload",
+            parcelFit = "Best for: 20-500 kg FMCG Cartons, Retail Boxes"
+        ),
+        DriverVehicleOption(
+            regNumber = "KA-51-EF-9012",
+            model = "Mahindra Bolero Maxi",
+            category = "Medium-Heavy Pickup",
+            capacityKg = 1200,
+            description = "High-Payload Pickup • 1,200 kg Payload",
+            parcelFit = "Best for: Wholesale Bags, Heavy Merchandise"
+        ),
+        DriverVehicleOption(
+            regNumber = "KA-03-GH-3456",
+            model = "Piaggio Ape Electric",
+            category = "Small Parcel Express",
+            capacityKg = 500,
+            description = "Electric 3-Wheeler • 500 kg Payload",
+            parcelFit = "Best for: < 20 kg Express, Documents, Small Parcels"
+        ),
+        DriverVehicleOption(
+            regNumber = "KA-04-AL-9012",
+            model = "Ashok Leyland Dost+",
+            category = "Commercial Light",
+            capacityKg = 1500,
+            description = "Light Commercial Truck • 1,500 kg Payload",
+            parcelFit = "Best for: Bulky Consignments, High Deck Loads"
+        ),
+        DriverVehicleOption(
+            regNumber = "KA-05-CD-5678",
+            model = "Eicher Pro 1049",
+            category = "Heavy Freight Carrier",
+            capacityKg = 2500,
+            description = "Heavy Distribution Truck • 2,500 kg Payload",
+            parcelFit = "Best for: > 500 kg Industrial Pallets & Barrels"
+        )
+    )
 
     val myHistoryDeliveries = listOf(
         DriverHistoryItem(
@@ -77,7 +133,7 @@ fun DriverHomeScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Log Out?", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A)) },
-            text = { Text("Are you sure you want to log out of Fleet Driver? Your active GPS duty tracking will be stopped.", color = Color(0xFF334155)) },
+            text = { Text("Are you sure you want to log out of Roditte Fleet Driver? Your active GPS duty tracking will be stopped.", color = Color(0xFF334155)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -92,6 +148,107 @@ fun DriverHomeScreen(
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Cancel", color = Color(0xFF64748B))
+                }
+            },
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
+        )
+    }
+
+    // VEHICLE SELECTION DIALOG (For idle driver fulfilling order / starting trip)
+    if (showVehicleSelectorDialog) {
+        AlertDialog(
+            onDismissRequest = { showVehicleSelectorDialog = false },
+            title = {
+                Column {
+                    Text("Select Vehicle for Trip", fontWeight = FontWeight.Bold, color = Color(0xFF0F172A), fontSize = 17.sp)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("Choose vehicle matching upcoming parcel weight & volume", color = Color(0xFF64748B), fontSize = 11.sp)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    fleetVehicleOptions.forEach { v ->
+                        val fullLabel = "${v.regNumber} (${v.model})"
+                        val isChosen = selectedVehicle.contains(v.regNumber) || selectedVehicle == fullLabel
+                        Surface(
+                            color = if (isChosen) Color(0xFFEFF6FF) else Color.White,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.5.dp, if (isChosen) Color(0xFF1D4ED8) else Color(0xFFE2E8F0)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedVehicle = fullLabel
+                                    vehicleSwitchedMessage = "Switched to ${v.model} (${v.regNumber})"
+                                    onVehicleSelect(fullLabel)
+                                    showVehicleSelectorDialog = false
+                                }
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.LocalShipping,
+                                            contentDescription = null,
+                                            tint = if (isChosen) Color(0xFF1D4ED8) else Color(0xFF64748B),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = v.model,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isChosen) Color(0xFF1D4ED8) else Color(0xFF0F172A),
+                                            fontSize = 13.sp
+                                        )
+                                    }
+                                    if (isChosen) {
+                                        Surface(
+                                            color = Color(0xFF1D4ED8),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                "ACTIVE",
+                                                color = Color.White,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Reg: ${v.regNumber} • Payload: ${v.capacityKg} kg (${v.category})",
+                                    color = Color(0xFF334155),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = v.parcelFit,
+                                    color = Color(0xFF059669),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showVehicleSelectorDialog = false }) {
+                    Text("Close", color = Color(0xFF64748B))
                 }
             },
             containerColor = Color.White,
@@ -178,7 +335,7 @@ fun DriverHomeScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = vehicleNumber,
+                            text = selectedVehicle,
                             color = Color(0xFF64748B),
                             fontSize = 11.sp
                         )
@@ -227,6 +384,95 @@ fun DriverHomeScreen(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                }
+            }
+        }
+
+        // Feedback banner when vehicle is selected
+        if (vehicleSwitchedMessage != null) {
+            Surface(
+                color = Color(0xFFDCFCE7),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, Color(0xFF86EFAC)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(vehicleSwitchedMessage!!, color = Color(0xFF15803D), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // TRIP VEHICLE SELECTION CARD (Available when driver is idle / preparing for trip)
+        Surface(
+            color = Color.White,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+            shadowElevation = 1.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp)
+                .clickable { showVehicleSelectorDialog = true }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Surface(
+                        color = Color(0xFFEFF6FF),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.LocalShipping,
+                                contentDescription = null,
+                                tint = Color(0xFF1D4ED8),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "TRIP VEHICLE (PARCEL SIZING)",
+                            color = Color(0xFF1D4ED8),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = selectedVehicle,
+                            color = Color(0xFF0F172A),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (isDutyActive) "Ready for dispatch • Tap to change vehicle" else "Off Duty",
+                            color = if (isDutyActive) Color(0xFF059669) else Color(0xFF64748B),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = { showVehicleSelectorDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1D4ED8)),
+                    border = BorderStroke(1.dp, Color(0xFF1D4ED8)),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text("Select Vehicle", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -448,7 +694,39 @@ fun DriverHomeScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        color = Color(0xFFF8FAFC),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.LocalShipping, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text("Trip Vehicle Selected", color = Color(0xFF64748B), fontSize = 9.sp, fontWeight = FontWeight.Medium)
+                                    Text(selectedVehicle, color = Color(0xFF0F172A), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            TextButton(
+                                onClick = { showVehicleSelectorDialog = true },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("Change", color = Color(0xFF1D4ED8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Button(
                         onClick = { onViewJobClick("JOB-10045") },

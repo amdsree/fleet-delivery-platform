@@ -13,7 +13,7 @@ import com.fleet.delivery.ui.MainActivity
 object FleetNotificationManager {
 
     const val CHANNEL_ID = "fleet_job_alerts"
-    const val CHANNEL_NAME = "Fleet Job & Dispatch Alerts"
+    const val CHANNEL_NAME = "Roditte Fleet Alerts"
 
     fun initNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -510,7 +510,7 @@ fun StaffOperationsScreen(
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Log Out?", fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to log out of FleetOps Management Console?") },
+            text = { Text("Are you sure you want to log out of Roditte Fleet Management Console?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -2404,7 +2404,7 @@ fun StaffOperationsScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "FLEETOPS ENTERPRISE",
+                            text = "RODITTE FLEET MANAGEMENT",
                             color = Color(0xFF1D4ED8),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
