@@ -36,8 +36,8 @@ import kotlinx.coroutines.launch
 fun LoginScreen(
     onLoginSuccess: (name: String, email: String, role: String, token: String) -> Unit
 ) {
-    var identifier by remember { mutableStateOf("admin@fleetplatform.com") }
-    var password by remember { mutableStateOf("Admin@12345") }
+    var identifier by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -282,85 +282,6 @@ fun LoginScreen(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Quick Login Profiles
-                Text(
-                    text = "SELECT OPERATIONAL PROFILE:",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF64748B),
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            identifier = "admin@fleetplatform.com"
-                            password = "Admin@12345"
-                            performLogin("admin@fleetplatform.com", "Admin@12345")
-                        },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1D4ED8))
-                    ) {
-                        Text("Edwin (Admin)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            identifier = "godown@fleetplatform.com"
-                            password = "Staff@12345"
-                            performLogin("godown@fleetplatform.com", "Staff@12345")
-                        },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155))
-                    ) {
-                        Text("Ramesh (Godown)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            identifier = "sales@fleetplatform.com"
-                            password = "Staff@12345"
-                            performLogin("sales@fleetplatform.com", "Staff@12345")
-                        },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155))
-                    ) {
-                        Text("Ananya (Sales)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            identifier = "driver@fleetplatform.com"
-                            password = "Driver@12345"
-                            performLogin("driver@fleetplatform.com", "Driver@12345")
-                        },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF334155))
-                    ) {
-                        Text("Kiran (Driver)", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

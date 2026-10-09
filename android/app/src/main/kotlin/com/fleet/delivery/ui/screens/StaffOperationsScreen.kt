@@ -300,6 +300,35 @@ fun StaffOperationsScreen(
     }
 
     var currentFeedTab by remember { mutableStateOf("ACTIVE") }
+
+    val sharedPrefs = remember { context.getSharedPreferences("fleet_driver_prefs", android.content.Context.MODE_PRIVATE) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val liveLat = sharedPrefs.getString("live_driver_lat", null)?.toDoubleOrNull()
+            val liveLng = sharedPrefs.getString("live_driver_lng", null)?.toDoubleOrNull()
+            val liveSpd = sharedPrefs.getInt("live_driver_speed", 0)
+            val livePing = sharedPrefs.getLong("live_driver_last_ping", 0L)
+            val isLiveActive = sharedPrefs.getBoolean("live_driver_keep_alive", false)
+
+            if (liveLat != null && liveLng != null && livePing > 0) {
+                val secondsAgo = ((System.currentTimeMillis() - livePing) / 1000).toInt().coerceAtLeast(1)
+                val status = if (isLiveActive && secondsAgo < 60) "ACTIVE" else if (secondsAgo < 300) "IDLE" else "OFFLINE"
+                driversRadarList = driversRadarList.map { d ->
+                    if (d.id == "d1") {
+                        d.copy(
+                            latitude = liveLat,
+                            longitude = liveLng,
+                            speedKmh = liveSpd,
+                            keepAliveStatus = status,
+                            lastPingSecondsAgo = secondsAgo
+                        )
+                    } else d
+                }
+            }
+            kotlinx.coroutines.delay(3000L)
+        }
+    }
     var selectedDriverFilter by remember { mutableStateOf("All Drivers") }
     var selectedDateFilter by remember { mutableStateOf("All Dates") }
     var showOverflowMenu by remember { mutableStateOf(false) }
@@ -878,7 +907,40 @@ fun StaffOperationsScreen(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Real-Time Driver Foreground Heartbeat & GPS Coordinates:", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Real-Time Driver Heartbeat & GPS:", color = Color(0xFF64748B), fontSize = 11.sp)
+                        Button(
+                            onClick = {
+                                val liveLat = sharedPrefs.getString("live_driver_lat", null)?.toDoubleOrNull()
+                                val liveLng = sharedPrefs.getString("live_driver_lng", null)?.toDoubleOrNull()
+                                val liveSpd = sharedPrefs.getInt("live_driver_speed", 0)
+                                val isLiveActive = sharedPrefs.getBoolean("live_driver_keep_alive", false)
+
+                                driversRadarList = driversRadarList.map { d ->
+                                    if (d.id == "d1" && liveLat != null && liveLng != null) {
+                                        d.copy(
+                                            latitude = liveLat,
+                                            longitude = liveLng,
+                                            speedKmh = liveSpd,
+                                            keepAliveStatus = if (isLiveActive) "ACTIVE" else "IDLE",
+                                            lastPingSecondsAgo = 1
+                                        )
+                                    } else d
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Refresh Now", fontSize = 10.sp)
+                        }
+                    }
 
                     driversRadarList.forEach { drv ->
                         Card(
@@ -2972,6 +3034,24 @@ fun StaffOperationsScreen(
                                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                                             ) {
                                                 Text("Reject", fontSize = 10.sp, color = Color(0xFFDC2626), fontWeight = FontWeight.Bold)
+                                            }
+                                        } else if (job.status == "IN PROGRESS") {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val matchedDriver = driversRadarList.find { it.name == job.assignedDriver } ?: driversRadarList.firstOrNull()
+                                                    if (matchedDriver != null) {
+                                                        val uri = Uri.parse("https://www.google.com/maps?q=${matchedDriver.latitude},${matchedDriver.longitude}")
+                                                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                                                    }
+                                                },
+                                                shape = RoundedCornerShape(6.dp),
+                                                border = BorderStroke(1.dp, Color(0xFF0284C7)),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF0284C7))
+                                            ) {
+                                                Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(12.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Live Location", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                                             }
                                         }
                                     }

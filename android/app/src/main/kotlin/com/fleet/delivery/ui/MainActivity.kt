@@ -33,6 +33,24 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("fleet_driver_prefs", Context.MODE_PRIVATE)
         val integrityResult = SecurityIntegrityChecker.checkIntegrity(this)
 
+        val requiredPermissions = mutableListOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val permissionsToRequest = requiredPermissions.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (permissionsToRequest.isNotEmpty()) {
+            androidx.core.app.ActivityCompat.requestPermissions(
+                this,
+                permissionsToRequest.toTypedArray(),
+                1001
+            )
+        }
+
         setContent {
             var showTamperWarning by remember { mutableStateOf(!integrityResult.isSecure) }
             if (showTamperWarning) {
@@ -63,14 +81,14 @@ class MainActivity : ComponentActivity() {
             }
 
             var isLoggedIn by remember { 
-                mutableStateOf(prefs.getBoolean("is_logged_in", true)) 
+                mutableStateOf(prefs.getBoolean("is_logged_in", false)) 
             }
-            val initialRole = prefs.getString("user_role", "ADMIN") ?: "ADMIN"
-            val storedName = prefs.getString("user_name", if (initialRole == "ADMIN") "Edwin" else "Edwin")
-            val initialName = if (initialRole == "ADMIN") "Edwin" else (storedName ?: "Edwin")
+            val initialRole = prefs.getString("user_role", "") ?: ""
+            val storedName = prefs.getString("user_name", "") ?: ""
+            val initialName = if (initialRole == "ADMIN") "Edwin" else storedName
             var userName by remember { mutableStateOf(initialName) }
             var userEmail by remember { 
-                mutableStateOf(prefs.getString("user_email", "admin@fleetplatform.com") ?: "admin@fleetplatform.com") 
+                mutableStateOf(prefs.getString("user_email", "") ?: "") 
             }
             var userRole by remember { 
                 mutableStateOf(initialRole) 
@@ -105,6 +123,9 @@ class MainActivity : ComponentActivity() {
                         driverVehicle = vehicleName
                         isLoggedIn = true
                         currentScreen = "HOME"
+                        if (role == "DRIVER") {
+                            startLocationService()
+                        }
                     }
                 )
             } else if (userRole == "ADMIN" || userRole == "GODOWN_MANAGER" || userRole == "SALES_STAFF") {
@@ -114,7 +135,16 @@ class MainActivity : ComponentActivity() {
                     userRole = userRole,
                     userEmail = userEmail,
                     onLogoutClick = {
-                        prefs.edit().putBoolean("is_logged_in", false).apply()
+                        prefs.edit()
+                            .putBoolean("is_logged_in", false)
+                            .remove("user_name")
+                            .remove("user_email")
+                            .remove("user_role")
+                            .remove("auth_token")
+                            .apply()
+                        userName = ""
+                        userEmail = ""
+                        userRole = ""
                         isLoggedIn = false
                     }
                 )
@@ -217,7 +247,16 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onLogoutClick = {
                                         stopLocationService()
-                                        prefs.edit().putBoolean("is_logged_in", false).apply()
+                                        prefs.edit()
+                                            .putBoolean("is_logged_in", false)
+                                            .remove("user_name")
+                                            .remove("user_email")
+                                            .remove("user_role")
+                                            .remove("auth_token")
+                                            .apply()
+                                        userName = ""
+                                        userEmail = ""
+                                        userRole = ""
                                         isLoggedIn = false
                                     }
                                 )
@@ -299,10 +338,14 @@ class MainActivity : ComponentActivity() {
     private fun startLocationService() {
         val intent = Intent(this, LocationTrackingService::class.java).apply {
             action = LocationTrackingService.ACTION_START
-            putExtra(LocationTrackingService.EXTRA_DRIVER_ID, "driver-1")
-            putExtra(LocationTrackingService.EXTRA_INTERVAL_MS, 15000L)
+            putExtra(LocationTrackingService.EXTRA_DRIVER_ID, "d1")
+            putExtra(LocationTrackingService.EXTRA_INTERVAL_MS, 10000L)
         }
-        startService(intent)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
     }
 
     private fun stopLocationService() {

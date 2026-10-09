@@ -25,6 +25,7 @@ class LocationTrackingService : Service() {
     private var activeJobId: String? = null
     private var activeVehicleId: String? = null
     private var trackingIntervalMs: Long = 15000L // Default: 15s in transit
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         const val CHANNEL_ID = "fleet_location_tracking"
@@ -44,6 +45,16 @@ class LocationTrackingService : Service() {
         db = AppDatabase.getInstance(this)
         createNotificationChannel()
 
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (powerManager != null) {
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "RoditteFleet:LocationKeepAliveWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+            }
+        }
+
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 for (location in result.locations) {
@@ -56,9 +67,10 @@ class LocationTrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                activeDriverId = intent.getStringExtra(EXTRA_DRIVER_ID) ?: ""
+                activeDriverId = intent.getStringExtra(EXTRA_DRIVER_ID) ?: "d1"
                 activeJobId = intent.getStringExtra(EXTRA_JOB_ID)
                 trackingIntervalMs = intent.getLongExtra(EXTRA_INTERVAL_MS, 15000L)
+                acquireKeepAliveWakeLock()
                 startForegroundServiceWithNotification()
                 requestLocationUpdates()
             }
@@ -77,10 +89,30 @@ class LocationTrackingService : Service() {
         return START_STICKY
     }
 
+    private fun acquireKeepAliveWakeLock() {
+        try {
+            if (wakeLock?.isHeld != true) {
+                wakeLock?.acquire(24 * 60 * 60 * 1000L) // 24-hour safety timeout
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun releaseKeepAliveWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun startForegroundServiceWithNotification() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("FleetOps Driver Active")
-            .setContentText("Background GPS tracking active for delivery dispatch")
+            .setContentTitle("Roditte Fleet Driver Active")
+            .setContentText("Keep-alive GPS streaming live to Dispatch Desk")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -97,13 +129,29 @@ class LocationTrackingService : Service() {
         }
     }
 
+    private fun updateForegroundNotification(lat: Double, lng: Double, speedKmh: Int) {
+        try {
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Roditte Fleet Driver Active")
+                .setContentText("📍 Lat: ${"%.4f".format(lat)}, Lng: ${"%.4f".format(lng)} • Speed: $speedKmh km/h")
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build()
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.notify(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     private fun requestLocationUpdates() {
         val locationRequest = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,
             trackingIntervalMs
         ).apply {
             setMinUpdateIntervalMillis(trackingIntervalMs / 2)
-            setMinUpdateDistanceMeters(5f) // ignore stationary jitter
+            setMinUpdateDistanceMeters(3f) // sensitive to small movements
             setWaitForAccurateLocation(false)
         }.build()
 
@@ -130,8 +178,24 @@ class LocationTrackingService : Service() {
             location.isFromMockProvider
         }
 
+        val speedKmh = if (location.hasSpeed()) (location.speed * 3.6f).toInt() else 0
+
+        // 1. Immediately cache live coordinates in SharedPreferences for instantaneous Admin / App visibility
+        try {
+            val prefs = getSharedPreferences("fleet_driver_prefs", Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString("live_driver_lat", location.latitude.toString())
+                .putString("live_driver_lng", location.longitude.toString())
+                .putInt("live_driver_speed", speedKmh)
+                .putLong("live_driver_last_ping", System.currentTimeMillis())
+                .putBoolean("live_driver_keep_alive", true)
+                .apply()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         val point = GpsPointEntity(
-            driverId = activeDriverId,
+            driverId = if (activeDriverId.isNotBlank()) activeDriverId else "d1",
             jobId = activeJobId,
             vehicleId = activeVehicleId,
             latitude = location.latitude,
@@ -147,8 +211,40 @@ class LocationTrackingService : Service() {
             isSynced = false
         )
 
+        // 2. Persist to local database
         serviceScope.launch {
-            db.gpsDao().insertPoint(point)
+            try {
+                db.gpsDao().insertPoint(point)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        // 3. Dispatch live fix to cloud backend telemetry endpoint
+        serviceScope.launch {
+            try {
+                val payload = com.fleet.delivery.data.remote.GpsPointPayload(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    accuracy = location.accuracy,
+                    speed = if (location.hasSpeed()) location.speed else null,
+                    bearing = if (location.hasBearing()) location.bearing else null,
+                    altitude = if (location.hasAltitude()) location.altitude else null,
+                    is_mock = isMock,
+                    timestamp_device = timestampDevice
+                )
+                val batchReq = com.fleet.delivery.data.remote.BatchGpsRequest(
+                    driver_id = if (activeDriverId.isNotBlank()) activeDriverId else "d1",
+                    job_id = activeJobId,
+                    points = listOf(payload)
+                )
+                val response = com.fleet.delivery.data.remote.ApiClient.service.uploadGpsBatch(batchReq)
+                if (response.isSuccessful) {
+                    updateForegroundNotification(location.latitude, location.longitude, speedKmh)
+                }
+            } catch (e: Exception) {
+                // Device is offline or in deadzone; Room database buffers point for OfflineSyncWorker
+            }
         }
     }
 
@@ -158,6 +254,9 @@ class LocationTrackingService : Service() {
     }
 
     private fun stopForegroundTracking() {
+        releaseKeepAliveWakeLock()
+        val prefs = getSharedPreferences("fleet_driver_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("live_driver_keep_alive", false).apply()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -179,6 +278,9 @@ class LocationTrackingService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        releaseKeepAliveWakeLock()
+        val prefs = getSharedPreferences("fleet_driver_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("live_driver_keep_alive", false).apply()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         serviceScope.cancel()
     }

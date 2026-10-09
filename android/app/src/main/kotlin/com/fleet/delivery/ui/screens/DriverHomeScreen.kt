@@ -59,6 +59,10 @@ fun DriverHomeScreen(
     var selectedDateFilter by remember { mutableStateOf("All Dates") }
     val scrollState = rememberScrollState()
 
+    LaunchedEffect(isDutyActive) {
+        onDutyToggle(isDutyActive)
+    }
+
     val fleetVehicleOptions = listOf(
         DriverVehicleOption(
             regNumber = "KA-04-AB-1234",
