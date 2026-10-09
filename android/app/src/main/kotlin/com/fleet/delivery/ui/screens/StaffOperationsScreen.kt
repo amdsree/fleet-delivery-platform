@@ -24,9 +24,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import com.fleet.delivery.util.FleetNotificationManager
 import java.text.SimpleDateFormat
 import java.util.*
+
+data class NewlyCreatedAccountInfo(
+    val name: String,
+    val usernamePhone: String,
+    val defaultPassword: String,
+    val role: String,
+    val vehicleOrUnit: String
+)
 
 data class UiJobItem(
     val id: String,
@@ -169,8 +180,11 @@ fun StaffOperationsScreen(
     var newDriverName by remember { mutableStateOf("") }
     var newDriverPhone by remember { mutableStateOf("") }
     var newDriverLicense by remember { mutableStateOf("") }
-    var newDriverVehicle by remember { mutableStateOf("KA-04-AB-1234 (Tata Ace Gold)") }
+    var newDriverVehicle by remember { mutableStateOf("Unassigned (Driver Choice)") }
     var newDriverDutyStatus by remember { mutableStateOf("AVAILABLE") }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var newlyCreatedAccount by remember { mutableStateOf<NewlyCreatedAccountInfo?>(null) }
+    val prefs = remember { context.getSharedPreferences("roditte_fleet_prefs", Context.MODE_PRIVATE) }
 
     // Add Vehicle Form State
     var newVehicleReg by remember { mutableStateOf("") }
@@ -559,6 +573,236 @@ fun StaffOperationsScreen(
             containerColor = Color.White,
             titleContentColor = Color(0xFF0F172A),
             textContentColor = Color(0xFF334155)
+        )
+    }
+
+    // STAFF / ADMIN CHANGE PASSWORD DIALOG
+    if (showChangePasswordDialog) {
+        var oldPasswordInput by remember { mutableStateOf("") }
+        var newPasswordInput by remember { mutableStateOf("") }
+        var confirmPasswordInput by remember { mutableStateOf("") }
+        var isOldVisible by remember { mutableStateOf(false) }
+        var isNewVisible by remember { mutableStateOf(false) }
+        var isConfirmVisible by remember { mutableStateOf(false) }
+        var pwdError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showChangePasswordDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFFEFF6FF),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("Change Password", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF0F172A))
+                        Text("$userName (${if (userRole == "ADMIN") "Administrator" else userRole.replace("_", " ")})", fontSize = 11.sp, color = Color(0xFF64748B))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val defaultPassForRole = when (userRole) {
+                        "ADMIN" -> "Admin@12345"
+                        "GODOWN_MANAGER", "SALES_STAFF" -> "Staff@12345"
+                        else -> "Driver@12345"
+                    }
+                    Text(
+                        text = "Default password is $defaultPassForRole unless previously changed.",
+                        fontSize = 11.sp,
+                        color = Color(0xFF475569)
+                    )
+
+                    if (pwdError != null) {
+                        Surface(
+                            color = Color(0xFFFEE2E2),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = pwdError!!,
+                                color = Color(0xFFDC2626),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = oldPasswordInput,
+                        onValueChange = { oldPasswordInput = it; pwdError = null },
+                        label = { Text("Current Password") },
+                        singleLine = true,
+                        visualTransformation = if (isOldVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isOldVisible = !isOldVisible }) {
+                                Icon(if (isOldVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null, tint = Color(0xFF64748B))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = newPasswordInput,
+                        onValueChange = { newPasswordInput = it; pwdError = null },
+                        label = { Text("New Password (min 6 chars)") },
+                        singleLine = true,
+                        visualTransformation = if (isNewVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isNewVisible = !isNewVisible }) {
+                                Icon(if (isNewVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null, tint = Color(0xFF64748B))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = confirmPasswordInput,
+                        onValueChange = { confirmPasswordInput = it; pwdError = null },
+                        label = { Text("Confirm New Password") },
+                        singleLine = true,
+                        visualTransformation = if (isConfirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isConfirmVisible = !isConfirmVisible }) {
+                                Icon(if (isConfirmVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null, tint = Color(0xFF64748B))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val defaultPass = when (userRole) {
+                            "ADMIN" -> "Admin@12345"
+                            "GODOWN_MANAGER", "SALES_STAFF" -> "Staff@12345"
+                            else -> "Driver@12345"
+                        }
+                        val currentStored = prefs.getString("custom_pwd_$userName", null)
+                            ?: prefs.getString("custom_pwd_$userEmail", null)
+                            ?: defaultPass
+
+                        if (oldPasswordInput.trim() != currentStored && oldPasswordInput.trim() != defaultPass) {
+                            pwdError = "Current password does not match."
+                        } else if (newPasswordInput.trim().length < 6) {
+                            pwdError = "New password must be at least 6 characters."
+                        } else if (newPasswordInput.trim() != confirmPasswordInput.trim()) {
+                            pwdError = "New passwords do not match."
+                        } else {
+                            val newPass = newPasswordInput.trim()
+                            val digitsOnly = userEmail.replace(Regex("[^0-9]"), "")
+
+                            prefs.edit()
+                                .putString("custom_pwd_$userName", newPass)
+                                .putString("custom_pwd_$userEmail", newPass)
+                                .apply()
+
+                            if (userName.equals("Edwin", ignoreCase = true)) {
+                                prefs.edit().putString("custom_pwd_edwin", newPass).apply()
+                            }
+                            if (digitsOnly.length >= 10) {
+                                prefs.edit().putString("custom_pwd_$digitsOnly", newPass).apply()
+                            }
+
+                            successMessage = "Password changed successfully! Please use your new password next time you sign in."
+                            showChangePasswordDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
+                ) {
+                    Text("Update Password")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangePasswordDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
+        )
+    }
+
+    // ACCOUNT CREATED CREDENTIALS SUMMARY DIALOG
+    if (newlyCreatedAccount != null) {
+        val acc = newlyCreatedAccount!!
+        AlertDialog(
+            onDismissRequest = { newlyCreatedAccount = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFFDCFCE7),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("Account Created", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                        Text("Role: ${acc.role.replace("_", " ")}", fontSize = 11.sp, color = Color(0xFF15803D), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            },
+            text = {
+                Surface(
+                    color = Color(0xFFF8FAFC),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Full Name:", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(acc.name, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        }
+                        Divider(color = Color(0xFFE2E8F0))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Username (Phone):", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(acc.usernamePhone, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1D4ED8))
+                        }
+                        Divider(color = Color(0xFFE2E8F0))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Initial Password:", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(acc.defaultPassword, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF059669))
+                        }
+                        Divider(color = Color(0xFFE2E8F0))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Vehicle / Unit:", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(acc.vehicleOrUnit, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "The user can log into the app using their phone number as the username and the default password. Every user has permission to change their password.",
+                            fontSize = 10.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { newlyCreatedAccount = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
+                ) {
+                    Text("Done")
+                }
+            },
+            containerColor = Color.White
         )
     }
 
@@ -1232,7 +1476,7 @@ fun StaffOperationsScreen(
                     OutlinedTextField(
                         value = newDriverPhone,
                         onValueChange = { newDriverPhone = it },
-                        label = { Text("Phone Number (+91 ...)") },
+                        label = { Text("Phone Number (Login Username) *") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1244,35 +1488,106 @@ fun StaffOperationsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Vehicle assignment
-                    Text("Assigned Vehicle:", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Surface(
+                        color = Color(0xFF0F172A),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, Color(0xFF334155)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "ℹ Login Username is Phone Number • Default Password: Driver@12345\nSelecting a vehicle is optional as drivers can pick from available vehicles per order.",
+                            color = Color(0xFF94A3B8),
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+
+                    // Vehicle assignment (Optional)
+                    Text("Assigned Vehicle (Optional):", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        // Option 1: None / Unassigned (Driver Choice)
+                        val isNone = newDriverVehicle == "Unassigned (Driver Choice)" || newDriverVehicle.startsWith("Unassigned") || newDriverVehicle.startsWith("None")
+                        Surface(
+                            color = if (isNone) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFF0F172A),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, if (isNone) Color(0xFF10B981) else Color(0xFF334155), RoundedCornerShape(6.dp))
+                                .clickable { newDriverVehicle = "Unassigned (Driver Choice)" }
+                        ) {
+                            Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    selected = isNone,
+                                    onClick = { newDriverVehicle = "Unassigned (Driver Choice)" },
+                                    colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF10B981))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("None (Driver will pick vehicle per allocated order)", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
                         vehiclesList.forEach { v ->
                             val vLabel = "${v.regNumber} (${v.model})"
-                            val isSelected = newDriverVehicle == vLabel || newDriverVehicle.startsWith(v.regNumber)
+                            val isSelected = !isNone && (newDriverVehicle == vLabel || newDriverVehicle.startsWith(v.regNumber))
+                            val isBusy = v.status == "IN_TRIP" || v.status == "BUSY"
+
                             Surface(
-                                color = if (isSelected) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFF0F172A),
+                                color = when {
+                                    isBusy -> Color(0xFF1E293B)
+                                    isSelected -> Color(0xFF10B981).copy(alpha = 0.2f)
+                                    else -> Color(0xFF0F172A)
+                                },
                                 shape = RoundedCornerShape(6.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .border(
                                         1.dp,
-                                        if (isSelected) Color(0xFF10B981) else Color(0xFF334155),
+                                        when {
+                                            isBusy -> Color(0xFFEF4444)
+                                            isSelected -> Color(0xFF10B981)
+                                            else -> Color(0xFF334155)
+                                        },
                                         RoundedCornerShape(6.dp)
                                     )
-                                    .clickable { newDriverVehicle = vLabel }
+                                    .clickable {
+                                        if (!isBusy) {
+                                            newDriverVehicle = vLabel
+                                        }
+                                    }
                             ) {
                                 Row(
                                     modifier = Modifier.padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    RadioButton(
-                                        selected = isSelected,
-                                        onClick = { newDriverVehicle = vLabel },
-                                        colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF10B981))
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(vLabel, color = Color.White, fontSize = 11.sp)
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = { if (!isBusy) newDriverVehicle = vLabel },
+                                            enabled = !isBusy,
+                                            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF10B981))
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            vLabel,
+                                            color = if (isBusy) Color(0xFF94A3B8) else Color.White,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    if (isBusy) {
+                                        Surface(
+                                            color = Color(0xFFDC2626),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                "BUSY IN RUN",
+                                                color = Color.White,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1303,13 +1618,15 @@ fun StaffOperationsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newDriverName.isNotBlank()) {
+                        if (newDriverName.isNotBlank() && newDriverPhone.isNotBlank()) {
                             val cleanName = newDriverName.trim()
+                            val cleanPhone = newDriverPhone.trim()
+                            val digitsOnly = cleanPhone.replace(Regex("[^0-9]"), "")
                             val assignedReg = if (newDriverVehicle.contains(" ")) newDriverVehicle.substringBefore(" ").trim() else newDriverVehicle.trim()
                             val newDriver = UiDriverRadarItem(
                                 id = "d_${System.currentTimeMillis()}",
                                 name = cleanName,
-                                phone = if (newDriverPhone.isNotBlank()) newDriverPhone.trim() else "+91 98450 ${10000 + (driversRadarList.size * 111)}",
+                                phone = cleanPhone,
                                 dutyStatus = newDriverDutyStatus,
                                 isBusy = (newDriverDutyStatus == "BUSY"),
                                 activeOrder = null,
@@ -1323,10 +1640,28 @@ fun StaffOperationsScreen(
                                 speedKmh = 0
                             )
                             driversRadarList = listOf(newDriver) + driversRadarList
-                            successMessage = "Driver ${newDriver.name} added successfully."
+
+                            // Persist user record in SharedPreferences for seamless phone login
+                            prefs.edit()
+                                .putString("user_record_$cleanPhone", "$cleanName|DRIVER||$cleanPhone")
+                                .apply()
+                            if (digitsOnly.length >= 10) {
+                                prefs.edit().putString("user_record_$digitsOnly", "$cleanName|DRIVER||$cleanPhone").apply()
+                            }
+
+                            newlyCreatedAccount = NewlyCreatedAccountInfo(
+                                name = cleanName,
+                                usernamePhone = cleanPhone,
+                                defaultPassword = "Driver@12345",
+                                role = "DRIVER",
+                                vehicleOrUnit = newDriverVehicle
+                            )
+
+                            successMessage = "Driver $cleanName created with username $cleanPhone."
                             newDriverName = ""
                             newDriverPhone = ""
                             newDriverLicense = ""
+                            newDriverVehicle = "Unassigned (Driver Choice)"
                             showAddDriverModal = false
                         }
                     },
@@ -1621,16 +1956,16 @@ fun StaffOperationsScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
-                        value = newStaffEmail,
-                        onValueChange = { newStaffEmail = it },
-                        label = { Text("Email Address") },
+                        value = newStaffPhone,
+                        onValueChange = { newStaffPhone = it },
+                        label = { Text("Phone Number (Login Username) *") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
-                        value = newStaffPhone,
-                        onValueChange = { newStaffPhone = it },
-                        label = { Text("Phone Number (+91 ...)") },
+                        value = newStaffEmail,
+                        onValueChange = { newStaffEmail = it },
+                        label = { Text("Work Email (Optional)") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1641,22 +1976,58 @@ fun StaffOperationsScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Surface(
+                        color = Color(0xFFF1F5F9),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "ℹ Login Username is Phone Number • Default Password: Staff@12345",
+                            color = Color(0xFF475569),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newStaffName.isNotBlank() && newStaffEmail.isNotBlank()) {
+                        if (newStaffName.isNotBlank() && newStaffPhone.isNotBlank()) {
+                            val cleanName = newStaffName.trim()
+                            val cleanPhone = newStaffPhone.trim()
+                            val digitsOnly = cleanPhone.replace(Regex("[^0-9]"), "")
+                            val cleanEmail = if (newStaffEmail.isNotBlank()) newStaffEmail.trim() else "${digitsOnly}@fleetplatform.com"
+
                             val newMember = UiStaffMember(
                                 id = "s_${System.currentTimeMillis()}",
-                                name = newStaffName.trim(),
-                                email = newStaffEmail.trim(),
-                                phone = if (newStaffPhone.isNotBlank()) newStaffPhone.trim() else "+91 98450 00000",
+                                name = cleanName,
+                                email = cleanEmail,
+                                phone = cleanPhone,
                                 role = newStaffRole,
                                 assignedUnit = newStaffUnit.trim()
                             )
                             staffList = listOf(newMember) + staffList
-                            successMessage = "${newMember.name} added to ${newMember.role}."
+
+                            // Persist user record in SharedPreferences for phone login
+                            prefs.edit()
+                                .putString("user_record_$cleanPhone", "$cleanName|$newStaffRole|$cleanEmail|$cleanPhone")
+                                .apply()
+                            if (digitsOnly.length >= 10) {
+                                prefs.edit().putString("user_record_$digitsOnly", "$cleanName|$newStaffRole|$cleanEmail|$cleanPhone").apply()
+                            }
+
+                            newlyCreatedAccount = NewlyCreatedAccountInfo(
+                                name = cleanName,
+                                usernamePhone = cleanPhone,
+                                defaultPassword = "Staff@12345",
+                                role = newStaffRole,
+                                vehicleOrUnit = newStaffUnit.trim()
+                            )
+
+                            successMessage = "${newMember.name} created with username $cleanPhone."
                             newStaffName = ""
                             newStaffEmail = ""
                             newStaffPhone = ""
@@ -2620,6 +2991,20 @@ fun StaffOperationsScreen(
                             onClick = {
                                 showOverflowMenu = false
                                 currentFeedTab = "HISTORY"
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Change Password", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                }
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                showChangePasswordDialog = true
                             }
                         )
 

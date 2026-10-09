@@ -20,6 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 
 data class DriverHistoryItem(
     val jobNumber: String,
@@ -37,7 +41,9 @@ data class DriverVehicleOption(
     val category: String,
     val capacityKg: Int,
     val description: String,
-    val parcelFit: String
+    val parcelFit: String,
+    val status: String = "AVAILABLE",
+    val busyWithDriver: String? = null
 )
 
 @Composable
@@ -53,58 +59,70 @@ fun DriverHomeScreen(
     var isDutyActive by remember { mutableStateOf(true) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showVehicleSelectorDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
     var selectedVehicle by remember(vehicleNumber) { mutableStateOf(vehicleNumber) }
     var vehicleSwitchedMessage by remember { mutableStateOf<String?>(null) }
     var driverTab by remember { mutableStateOf("ACTIVE") } // "ACTIVE" or "HISTORY"
     var selectedDateFilter by remember { mutableStateOf("All Dates") }
     val scrollState = rememberScrollState()
 
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("roditte_fleet_prefs", Context.MODE_PRIVATE) }
+
     LaunchedEffect(isDutyActive) {
         onDutyToggle(isDutyActive)
     }
 
-    val fleetVehicleOptions = listOf(
-        DriverVehicleOption(
-            regNumber = "KA-04-AB-1234",
-            model = "Tata Ace Gold",
-            category = "Medium Consignment",
-            capacityKg = 750,
-            description = "Standard Mini Truck • 750 kg Payload",
-            parcelFit = "Best for: 20-500 kg FMCG Cartons, Retail Boxes"
-        ),
-        DriverVehicleOption(
-            regNumber = "KA-51-EF-9012",
-            model = "Mahindra Bolero Maxi",
-            category = "Medium-Heavy Pickup",
-            capacityKg = 1200,
-            description = "High-Payload Pickup • 1,200 kg Payload",
-            parcelFit = "Best for: Wholesale Bags, Heavy Merchandise"
-        ),
-        DriverVehicleOption(
-            regNumber = "KA-03-GH-3456",
-            model = "Piaggio Ape Electric",
-            category = "Small Parcel Express",
-            capacityKg = 500,
-            description = "Electric 3-Wheeler • 500 kg Payload",
-            parcelFit = "Best for: < 20 kg Express, Documents, Small Parcels"
-        ),
-        DriverVehicleOption(
-            regNumber = "KA-04-AL-9012",
-            model = "Ashok Leyland Dost+",
-            category = "Commercial Light",
-            capacityKg = 1500,
-            description = "Light Commercial Truck • 1,500 kg Payload",
-            parcelFit = "Best for: Bulky Consignments, High Deck Loads"
-        ),
-        DriverVehicleOption(
-            regNumber = "KA-05-CD-5678",
-            model = "Eicher Pro 1049",
-            category = "Heavy Freight Carrier",
-            capacityKg = 2500,
-            description = "Heavy Distribution Truck • 2,500 kg Payload",
-            parcelFit = "Best for: > 500 kg Industrial Pallets & Barrels"
+    val fleetVehicleOptions = remember(selectedVehicle) {
+        listOf(
+            DriverVehicleOption(
+                regNumber = "KA-04-AB-1234",
+                model = "Tata Ace Gold",
+                category = "Medium Consignment",
+                capacityKg = 750,
+                description = "Standard Mini Truck • 750 kg Payload",
+                parcelFit = "Best for: 20-500 kg FMCG Cartons, Retail Boxes",
+                status = "AVAILABLE"
+            ),
+            DriverVehicleOption(
+                regNumber = "KA-05-CD-5678",
+                model = "Eicher Pro 1049",
+                category = "Heavy Freight Carrier",
+                capacityKg = 2500,
+                description = "Heavy Distribution Truck • 2,500 kg Payload",
+                parcelFit = "Best for: > 500 kg Industrial Pallets & Barrels",
+                status = "IN_TRIP",
+                busyWithDriver = "Ramesh Babu (Job #10041 - Whitefield)"
+            ),
+            DriverVehicleOption(
+                regNumber = "KA-51-EF-9012",
+                model = "Mahindra Bolero Maxi",
+                category = "Medium-Heavy Pickup",
+                capacityKg = 1200,
+                description = "High-Payload Pickup • 1,200 kg Payload",
+                parcelFit = "Best for: Wholesale Bags, Heavy Merchandise",
+                status = "AVAILABLE"
+            ),
+            DriverVehicleOption(
+                regNumber = "KA-03-GH-3456",
+                model = "Piaggio Ape Electric",
+                category = "Small Parcel Express",
+                capacityKg = 500,
+                description = "Electric 3-Wheeler • 500 kg Payload",
+                parcelFit = "Best for: < 20 kg Express, Documents, Small Parcels",
+                status = "AVAILABLE"
+            ),
+            DriverVehicleOption(
+                regNumber = "KA-04-AL-9012",
+                model = "Ashok Leyland Dost+",
+                category = "Commercial Light",
+                capacityKg = 1500,
+                description = "Light Commercial Truck • 1,500 kg Payload",
+                parcelFit = "Best for: Bulky Consignments, High Deck Loads",
+                status = "AVAILABLE"
+            )
         )
-    )
+    }
 
     val myHistoryDeliveries = listOf(
         DriverHistoryItem(
@@ -160,6 +178,153 @@ fun DriverHomeScreen(
         )
     }
 
+    // DRIVER CHANGE PASSWORD DIALOG
+    if (showChangePasswordDialog) {
+        var oldPasswordInput by remember { mutableStateOf("") }
+        var newPasswordInput by remember { mutableStateOf("") }
+        var confirmPasswordInput by remember { mutableStateOf("") }
+        var isOldVisible by remember { mutableStateOf(false) }
+        var isNewVisible by remember { mutableStateOf(false) }
+        var isConfirmVisible by remember { mutableStateOf(false) }
+        var pwdError by remember { mutableStateOf<String?>(null) }
+
+        AlertDialog(
+            onDismissRequest = { showChangePasswordDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Color(0xFFEFF6FF),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF1D4ED8), modifier = Modifier.size(18.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("Change Password", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF0F172A))
+                        Text("Driver: $driverName", fontSize = 11.sp, color = Color(0xFF64748B))
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Default password is Driver@12345. Update your password to secure your account.",
+                        fontSize = 11.sp,
+                        color = Color(0xFF475569)
+                    )
+
+                    if (pwdError != null) {
+                        Surface(
+                            color = Color(0xFFFEE2E2),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = pwdError!!,
+                                color = Color(0xFFDC2626),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = oldPasswordInput,
+                        onValueChange = { oldPasswordInput = it; pwdError = null },
+                        label = { Text("Current Password") },
+                        singleLine = true,
+                        visualTransformation = if (isOldVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isOldVisible = !isOldVisible }) {
+                                Icon(if (isOldVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null, tint = Color(0xFF64748B))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = newPasswordInput,
+                        onValueChange = { newPasswordInput = it; pwdError = null },
+                        label = { Text("New Password (min 6 chars)") },
+                        singleLine = true,
+                        visualTransformation = if (isNewVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isNewVisible = !isNewVisible }) {
+                                Icon(if (isNewVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null, tint = Color(0xFF64748B))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = confirmPasswordInput,
+                        onValueChange = { confirmPasswordInput = it; pwdError = null },
+                        label = { Text("Confirm New Password") },
+                        singleLine = true,
+                        visualTransformation = if (isConfirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isConfirmVisible = !isConfirmVisible }) {
+                                Icon(if (isConfirmVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, contentDescription = null, tint = Color(0xFF64748B))
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val currentStored = prefs.getString("custom_pwd_$driverName", null)
+                            ?: prefs.getString("custom_pwd_${prefs.getString("user_email", "")}", null)
+                            ?: "Driver@12345"
+
+                        if (oldPasswordInput.trim() != currentStored && oldPasswordInput.trim() != "Driver@12345") {
+                            pwdError = "Current password does not match."
+                        } else if (newPasswordInput.trim().length < 6) {
+                            pwdError = "New password must be at least 6 characters."
+                        } else if (newPasswordInput.trim() != confirmPasswordInput.trim()) {
+                            pwdError = "New passwords do not match."
+                        } else {
+                            val newPass = newPasswordInput.trim()
+                            val userEmailOrPhone = prefs.getString("user_email", "") ?: ""
+                            val digitsOnly = userEmailOrPhone.replace(Regex("[^0-9]"), "")
+
+                            prefs.edit()
+                                .putString("custom_pwd_$driverName", newPass)
+                                .putString("custom_pwd_$userEmailOrPhone", newPass)
+                                .apply()
+
+                            if (digitsOnly.length >= 10) {
+                                prefs.edit().putString("custom_pwd_$digitsOnly", newPass).apply()
+                            }
+
+                            vehicleSwitchedMessage = "Password changed successfully! Please use it on your next sign-in."
+                            showChangePasswordDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8))
+                ) {
+                    Text("Update Password")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangePasswordDialog = false }) {
+                    Text("Cancel")
+                }
+            },
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF0F172A),
+            textContentColor = Color(0xFF334155)
+        )
+    }
+
     // VEHICLE SELECTION DIALOG (For idle driver fulfilling order / starting trip)
     if (showVehicleSelectorDialog) {
         AlertDialog(
@@ -182,17 +347,34 @@ fun DriverHomeScreen(
                     fleetVehicleOptions.forEach { v ->
                         val fullLabel = "${v.regNumber} (${v.model})"
                         val isChosen = selectedVehicle.contains(v.regNumber) || selectedVehicle == fullLabel
+                        val isBusy = v.status == "IN_TRIP" || v.status == "BUSY"
+
                         Surface(
-                            color = if (isChosen) Color(0xFFEFF6FF) else Color.White,
+                            color = when {
+                                isBusy -> Color(0xFFFFFBEB)
+                                isChosen -> Color(0xFFEFF6FF)
+                                else -> Color.White
+                            },
                             shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.5.dp, if (isChosen) Color(0xFF1D4ED8) else Color(0xFFE2E8F0)),
+                            border = BorderStroke(
+                                1.5.dp,
+                                when {
+                                    isBusy -> Color(0xFFF59E0B)
+                                    isChosen -> Color(0xFF1D4ED8)
+                                    else -> Color(0xFFE2E8F0)
+                                }
+                            ),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    selectedVehicle = fullLabel
-                                    vehicleSwitchedMessage = "Switched to ${v.model} (${v.regNumber})"
-                                    onVehicleSelect(fullLabel)
-                                    showVehicleSelectorDialog = false
+                                    if (isBusy) {
+                                        vehicleSwitchedMessage = "Cannot select ${v.model}: Vehicle is currently in run on active trip."
+                                    } else {
+                                        selectedVehicle = fullLabel
+                                        vehicleSwitchedMessage = "Switched to ${v.model} (${v.regNumber})"
+                                        onVehicleSelect(fullLabel)
+                                        showVehicleSelectorDialog = false
+                                    }
                                 }
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
@@ -205,18 +387,39 @@ fun DriverHomeScreen(
                                         Icon(
                                             imageVector = Icons.Default.LocalShipping,
                                             contentDescription = null,
-                                            tint = if (isChosen) Color(0xFF1D4ED8) else Color(0xFF64748B),
+                                            tint = when {
+                                                isBusy -> Color(0xFFDC2626)
+                                                isChosen -> Color(0xFF1D4ED8)
+                                                else -> Color(0xFF64748B)
+                                            },
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = v.model,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isChosen) Color(0xFF1D4ED8) else Color(0xFF0F172A),
+                                            color = when {
+                                                isBusy -> Color(0xFF991B1B)
+                                                isChosen -> Color(0xFF1D4ED8)
+                                                else -> Color(0xFF0F172A)
+                                            },
                                             fontSize = 13.sp
                                         )
                                     }
-                                    if (isChosen) {
+                                    if (isBusy) {
+                                        Surface(
+                                            color = Color(0xFFDC2626),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text(
+                                                "BUSY - IN RUN",
+                                                color = Color.White,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else if (isChosen) {
                                         Surface(
                                             color = Color(0xFF1D4ED8),
                                             shape = RoundedCornerShape(4.dp)
@@ -224,6 +427,20 @@ fun DriverHomeScreen(
                                             Text(
                                                 "ACTIVE",
                                                 color = Color.White,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Surface(
+                                            color = Color(0xFFECFDF5),
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                                        ) {
+                                            Text(
+                                                "AVAILABLE",
+                                                color = Color(0xFF059669),
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -239,12 +456,21 @@ fun DriverHomeScreen(
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = v.parcelFit,
-                                    color = Color(0xFF059669),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                if (isBusy) {
+                                    Text(
+                                        text = "⛔ Currently in run: ${v.busyWithDriver ?: "Trip in progress"}",
+                                        color = Color(0xFFDC2626),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                } else {
+                                    Text(
+                                        text = v.parcelFit,
+                                        color = Color(0xFF059669),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
@@ -374,6 +600,20 @@ fun DriverHomeScreen(
                             uncheckedTrackColor = Color(0xFFCBD5E1)
                         )
                     )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    IconButton(
+                        onClick = { showChangePasswordDialog = true },
+                        modifier = Modifier
+                            .size(34.dp)
+                            .background(Color(0xFFEFF6FF), shape = RoundedCornerShape(8.dp))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Change Password",
+                            tint = Color(0xFF1D4ED8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(6.dp))
                     IconButton(
                         onClick = { showLogoutDialog = true },

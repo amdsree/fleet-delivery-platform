@@ -78,4 +78,15 @@ interface FleetApiService {
 
     @POST("gps/batch")
     suspend fun uploadGpsBatch(@Body req: BatchGpsRequest): Response<Any>
+
+    @POST("auth/change-password")
+    suspend fun changePassword(
+        @Header("Authorization") token: String,
+        @Body req: ChangePasswordRequest
+    ): Response<Any>
 }
+
+data class ChangePasswordRequest(
+    val old_password: String,
+    val new_password: String
+)

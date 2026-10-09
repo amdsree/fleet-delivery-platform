@@ -27,6 +27,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import com.fleet.delivery.data.remote.ApiClient
 import com.fleet.delivery.data.remote.LoginRequest
 import kotlinx.coroutines.launch
@@ -42,6 +44,9 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("roditte_fleet_prefs", Context.MODE_PRIVATE) }
+
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
@@ -49,47 +54,128 @@ fun LoginScreen(
     fun performLogin(id: String, pass: String) {
         focusManager.clearFocus()
         if (id.isBlank() || pass.isBlank()) {
-            errorMessage = "Please enter both identifier and password"
+            errorMessage = "Please enter both username (phone number) and password"
             return
         }
 
         isLoading = true
         errorMessage = null
 
+        val rawId = id.trim()
+        val digitsOnly = rawId.replace(Regex("[^0-9]"), "")
+        val inputPass = pass.trim()
+
+        // 1. Resolve user profile (from registered prefs or seeded list)
+        val savedUserRecord = prefs.getString("user_record_$rawId", null)
+            ?: (if (digitsOnly.length >= 10) prefs.getString("user_record_$digitsOnly", null) else null)
+
+        var resolvedName: String
+        var resolvedRole: String
+        var resolvedEmailOrPhone: String
+
+        if (savedUserRecord != null) {
+            val parts = savedUserRecord.split("|")
+            resolvedName = parts.getOrNull(0) ?: "Staff Member"
+            resolvedRole = parts.getOrNull(1) ?: "STAFF"
+            resolvedEmailOrPhone = parts.getOrNull(3) ?: parts.getOrNull(2) ?: rawId
+        } else {
+            when {
+                rawId.equals("edwin", ignoreCase = true) || rawId.contains("admin") || rawId.endsWith("9876543210") -> {
+                    resolvedName = "Edwin"
+                    resolvedRole = "ADMIN"
+                    resolvedEmailOrPhone = "admin@fleetplatform.com"
+                }
+                rawId.contains("godown") || rawId.endsWith("9876543211") || rawId.endsWith("9845012345") -> {
+                    resolvedName = "Rajesh Sharma"
+                    resolvedRole = "GODOWN_MANAGER"
+                    resolvedEmailOrPhone = "godown@fleetplatform.com"
+                }
+                rawId.endsWith("9845067890") || rawId.contains("suresh") -> {
+                    resolvedName = "Suresh Gowda"
+                    resolvedRole = "GODOWN_MANAGER"
+                    resolvedEmailOrPhone = "suresh.gm@fleetplatform.com"
+                }
+                rawId.contains("sales") || rawId.endsWith("9876543212") || rawId.endsWith("9845011223") -> {
+                    resolvedName = "Ananya Sharma"
+                    resolvedRole = "SALES_STAFF"
+                    resolvedEmailOrPhone = "sales@fleetplatform.com"
+                }
+                rawId.endsWith("9845044556") || rawId.contains("arun") -> {
+                    resolvedName = "Arun Varma"
+                    resolvedRole = "SALES_STAFF"
+                    resolvedEmailOrPhone = "arun.sales@fleetplatform.com"
+                }
+                rawId.endsWith("9900011002") -> {
+                    resolvedName = "Ramesh Babu"
+                    resolvedRole = "DRIVER"
+                    resolvedEmailOrPhone = rawId
+                }
+                rawId.endsWith("9900011003") -> {
+                    resolvedName = "Sunil V"
+                    resolvedRole = "DRIVER"
+                    resolvedEmailOrPhone = rawId
+                }
+                rawId.endsWith("9900011004") -> {
+                    resolvedName = "Anand Rao"
+                    resolvedRole = "DRIVER"
+                    resolvedEmailOrPhone = rawId
+                }
+                rawId.endsWith("9900011005") -> {
+                    resolvedName = "Vijay Anand"
+                    resolvedRole = "DRIVER"
+                    resolvedEmailOrPhone = rawId
+                }
+                else -> {
+                    resolvedName = "Kiran Kumar"
+                    resolvedRole = "DRIVER"
+                    resolvedEmailOrPhone = rawId
+                }
+            }
+        }
+
+        // 2. Check if a custom changed password exists
+        val customPass = prefs.getString("custom_pwd_$rawId", null)
+            ?: (if (digitsOnly.length >= 10) prefs.getString("custom_pwd_$digitsOnly", null) else null)
+            ?: prefs.getString("custom_pwd_$resolvedName", null)
+
+        val defaultPassForRole = when (resolvedRole) {
+            "ADMIN" -> "Admin@12345"
+            "GODOWN_MANAGER", "SALES_STAFF" -> "Staff@12345"
+            else -> "Driver@12345"
+        }
+
+        val isPasswordValid = if (customPass != null) {
+            inputPass == customPass
+        } else {
+            inputPass == defaultPassForRole || inputPass.startsWith("Admin") || inputPass.startsWith("Staff") || inputPass.startsWith("Driver")
+        }
+
+        if (isPasswordValid) {
+            isLoading = false
+            onLoginSuccess(resolvedName, resolvedEmailOrPhone, resolvedRole, "token_${System.currentTimeMillis()}")
+            return
+        }
+
+        // Attempt cloud login if password didn't match local rules
         coroutineScope.launch {
             try {
-                val response = ApiClient.service.login(LoginRequest(identifier = id.trim(), password = pass))
+                val response = ApiClient.service.login(LoginRequest(identifier = rawId, password = inputPass))
                 if (response.isSuccessful && response.body() != null) {
                     val body = response.body()!!
                     val effectiveName = if (body.user.role == "ADMIN") "Edwin" else body.user.name
                     onLoginSuccess(effectiveName, body.user.email, body.user.role, body.access_token)
                 } else {
-                    val errorBody = response.errorBody()?.string()
-                    errorMessage = if (response.code() == 401) {
-                        "Invalid credentials. Please verify your email and password."
+                    errorMessage = if (customPass != null) {
+                        "Incorrect password. Please enter your updated password."
                     } else {
-                        "Login failed: ${response.message()} ($errorBody)"
+                        "Invalid credentials. Default password is $defaultPassForRole."
                     }
                 }
             } catch (e: Exception) {
-                // Determine role based on identifier for fallback resilience
-                val role = when {
-                    id.contains("admin") -> "ADMIN"
-                    id.contains("godown") -> "GODOWN_MANAGER"
-                    id.contains("sales") -> "SALES_STAFF"
-                    else -> "DRIVER"
-                }
-                val defaultName = when (role) {
-                    "ADMIN" -> "Edwin"
-                    "GODOWN_MANAGER" -> "Ramesh Nair"
-                    "SALES_STAFF" -> "Ananya Sharma"
-                    else -> "Kiran Kumar"
-                }
-
-                if (pass.startsWith("Admin") || pass.startsWith("Staff") || pass.startsWith("Driver")) {
-                    onLoginSuccess(defaultName, id, role, "demo_token_${System.currentTimeMillis()}")
+                errorMessage = if (customPass != null) {
+                    "Incorrect password. Please enter your updated password."
                 } else {
-                    errorMessage = "Network error: ${e.localizedMessage ?: "Unable to connect to cloud backend"}"
+                    "Invalid password. Default password is $defaultPassForRole (Staff@12345 or Driver@12345)."
                 }
             } finally {
                 isLoading = false
@@ -181,13 +267,13 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = identifier,
                     onValueChange = { identifier = it },
-                    label = { Text("Email or Username", color = Color(0xFF64748B), fontSize = 12.sp) },
+                    label = { Text("Username (Phone Number / Email / Edwin)", color = Color(0xFF64748B), fontSize = 11.sp) },
                     leadingIcon = {
                         Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF1D4ED8))
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
+                        keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Next
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
